@@ -45,10 +45,6 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
   }
 
   const ctxPct = merged?.ctxPct ?? 0
-  // Prefer the cost we just parsed from Claude Code's stdin — it's the freshest
-  // and doesn't depend on the daemon round-trip. Fall back to merged (which the
-  // daemon got from a previous statusline push) when not in stdin.
-  const cost = parsed.cost ?? merged?.cost ?? 0
   const toolsCount = merged?.tools.length ?? 0
   const todosDone = merged?.todos.filter((t) => t.completed).length ?? 0
   const todosTotal = merged?.todos.length ?? 0
@@ -65,7 +61,6 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
     model: parsed.model,
     branch: parsed.branch ?? 'detached',
     ctxPct,
-    cost,
     toolsCount,
     subagentCount: 0,
     todosDone,

@@ -2,25 +2,25 @@ import { describe, it, expect } from 'vitest'
 import { renderMinimal, renderEssential, formatCountdown } from './render.js'
 
 describe('renderMinimal', () => {
-  it('outputs one line with model, cwd, branch, ctx, cost', () => {
+  it('outputs one line with model, cwd, branch, ctx (cost no longer displayed)', () => {
     const out = renderMinimal({
       sessionId: 'abc', cwd: '/home/me/proj', model: 'claude-opus-4-7',
-      branch: 'main', ctxPct: 47, cost: 0.42,
+      branch: 'main', ctxPct: 47,
       dashboardUrl: 'http://localhost:5050/sessions/abc', supportsOsc8: false,
     })
     expect(out).toContain('claude-opus-4-7')
     expect(out).toContain('proj')
     expect(out).toContain('main')
     expect(out).toContain('47%')
-    expect(out).toContain('$0.42')
+    expect(out).not.toContain('$')          // cost intentionally removed
     expect(out).toContain('[cockpit]')
-    expect(out).toContain('\x1b[32m')  // green ctx color (47% < 70 threshold)
+    expect(out).toContain('\x1b[32m')       // green ctx color (47% < 70 threshold)
   })
 
   it('emits OSC 8 escape sequences when supported', () => {
     const out = renderMinimal({
       sessionId: 'abc', cwd: '/x', model: 'm',
-      branch: 'main', ctxPct: 0, cost: 0,
+      branch: 'main', ctxPct: 0,
       dashboardUrl: 'http://localhost:5050/sessions/abc', supportsOsc8: true,
     })
     expect(out).toContain(']8;;http://localhost:5050/sessions/abc')
@@ -32,7 +32,7 @@ describe('renderEssential', () => {
   it('outputs two lines with progress bar and link set', () => {
     const out = renderEssential({
       sessionId: 'sid', cwd: '/a/b/c', model: 'm', branch: 'main',
-      ctxPct: 50, cost: 1.23, toolsCount: 7, subagentCount: 2,
+      ctxPct: 50, toolsCount: 7, subagentCount: 2,
       todosDone: 2, todosTotal: 5,
       dashboardUrl: 'http://l/s', stopUrl: 'http://l/stop', fileUrl: 'http://l/file',
       supportsOsc8: false,
@@ -52,7 +52,7 @@ describe('renderEssential', () => {
   it('progress bar is empty at 0% and full at 100%', () => {
     const base = {
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
-      cost: 0, toolsCount: 0, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      toolsCount: 0, subagentCount: 0, todosDone: 0, todosTotal: 0,
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
     } as const
@@ -63,7 +63,7 @@ describe('renderEssential', () => {
   it('ctx bar uses RED ANSI at >=85% and GREEN at low', () => {
     const base = {
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
-      cost: 0, toolsCount: 0, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      toolsCount: 0, subagentCount: 0, todosDone: 0, todosTotal: 0,
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
     } as const
@@ -76,7 +76,7 @@ describe('renderEssential', () => {
     const now = 1_000_000_000
     const out = renderEssential({
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
-      ctxPct: 30, cost: 0, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      ctxPct: 30, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
       usage5hPct: 92, usage5hResetAt: now + 60_000,
@@ -96,7 +96,7 @@ describe('renderEssential', () => {
     const in5d = now + 5 * 24 * 60 * 60 * 1000 + 12 * 60 * 60 * 1000
     const out = renderEssential({
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
-      ctxPct: 30, cost: 0, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      ctxPct: 30, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
       usage5hPct: 25, usage5hResetAt: in2h,
@@ -115,7 +115,7 @@ describe('renderEssential', () => {
   it('omits usage segments when absent (degrades gracefully)', () => {
     const out = renderEssential({
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
-      ctxPct: 0, cost: 0, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      ctxPct: 0, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
     })

@@ -7,7 +7,7 @@ describe('runStatusline', () => {
     const send   = vi.fn().mockResolvedValue(undefined)
     const ping   = vi.fn().mockResolvedValue(true)
     const fetchSession = vi.fn().mockResolvedValue({
-      ctxPct: 47, cost: 0.42,
+      ctxPct: 47,
       tools: [{ ts: 1, name: 'Read', status: 'ok' }],
       todos: [{ text: 'done', completed: true }, { text: 'open', completed: false }],
     })
