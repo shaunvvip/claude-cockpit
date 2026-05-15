@@ -3,6 +3,6 @@ node_modules/
 dist/
 *.log
 .DS_Store
-~/.claude-cockpit/
+# Note: ~/.claude-cockpit/ is created at runtime by the daemon; never inside this repo.
 .vite/
 coverage/
