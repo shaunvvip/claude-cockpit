@@ -7,6 +7,7 @@ import { SessionRegistry } from './session-registry.js'
 import { WsBroadcaster } from './api/ws.js'
 import { TranscriptWatcher } from './transcript-watcher.js'
 import { computeCtxPct } from './ctx-calc.js'
+import { parseMcpConfig, getDefaultSettingsPath } from './mcp-inspector.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -35,6 +36,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
 
   const registry = new SessionRegistry()
   const broadcaster = new WsBroadcaster()
+  const mcpServers = parseMcpConfig(getDefaultSettingsPath())
 
   const watchers = new Map<string, TranscriptWatcher>()
 
@@ -53,6 +55,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
 
     const updated = registry.upsert(frame.sessionId, {
       ...frame.payload,
+      mcpServers,
       lastUpdate: Date.now(),
     })
     broadcaster.publishUpsert(updated)
