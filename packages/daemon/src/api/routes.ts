@@ -25,6 +25,7 @@ export interface ApiResponse {
   status: number
   body: string
   contentType: string
+  headers?: Record<string, string>
 }
 
 export interface ApiContext {
@@ -32,6 +33,13 @@ export interface ApiContext {
   platform: PlatformActions
   port: number
   request?: IncomingMessage    // optional for backward-compat with existing tests
+}
+
+function checkOriginOk(req: IncomingMessage | undefined, port: number): boolean {
+  if (!req) return true
+  const origin = req.headers.origin
+  if (!origin) return true
+  return origin === `http://localhost:${port}` || origin === `http://127.0.0.1:${port}`
 }
 
 function readBody(req: IncomingMessage): Promise<string> {
@@ -120,6 +128,31 @@ export async function handleApiRequest(
     if (s.ppid <= 0) return json(422, { error: 'no ppid' })
     await ctx.platform.focusTerminal(s.ppid).catch(() => undefined)
     return json(200, { ok: true })
+  }
+
+  const interruptRedirect = url.match(/^\/api\/sessions\/([^/]+)\/interrupt-redirect$/)
+  if (method === 'GET' && interruptRedirect) {
+    if (!checkOriginOk(ctx.request, ctx.port)) return json(403, { error: 'origin denied' })
+    const sid = interruptRedirect[1]!
+    const s = ctx.registry.get(sid)
+    if (s && s.ppid > 0) {
+      const ok = await ppidLooksLikeClaude(s.ppid, ctx.platform.platform)
+      if (ok) {
+        try { process.kill(s.ppid, 'SIGINT') } catch { /* */ }
+      }
+    }
+    return { status: 302, body: '', contentType: 'text/plain', headers: { Location: `/sessions/${sid}` } }
+  }
+
+  const openFileRedirect = url.match(/^\/api\/sessions\/([^/]+)\/open-file-redirect$/)
+  if (method === 'GET' && openFileRedirect) {
+    if (!checkOriginOk(ctx.request, ctx.port)) return json(403, { error: 'origin denied' })
+    const sid = openFileRedirect[1]!
+    const s = ctx.registry.get(sid)
+    if (s?.lastEditPath) {
+      await ctx.platform.openFile(s.lastEditPath).catch(() => undefined)
+    }
+    return { status: 302, body: '', contentType: 'text/plain', headers: { Location: `/sessions/${sid}` } }
   }
 
   return json(404, { error: 'not found' })

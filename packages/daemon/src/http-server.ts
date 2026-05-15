@@ -69,7 +69,10 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
         request: req,
       })
       if (apiRes) {
-        res.writeHead(apiRes.status, { 'Content-Type': apiRes.contentType })
+        res.writeHead(apiRes.status, {
+          'Content-Type': apiRes.contentType,
+          ...apiRes.headers,
+        })
         res.end(apiRes.body)
         return
       }

@@ -208,6 +208,47 @@ describe('POST /copy-info', () => {
   })
 })
 
+describe('GET /interrupt-redirect', () => {
+  it('redirects 302 to /sessions/:id', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, ppid: 0 })
+    const platform = { platform: 'darwin' as const } as any
+    const res = await handleApiRequest('GET', '/api/sessions/sid/interrupt-redirect', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(302)
+    expect(res?.headers?.Location).toBe('/sessions/sid')
+  })
+
+  it('returns 403 on foreign Origin', async () => {
+    const fakeReq = { headers: { origin: 'http://evil.com' } } as any
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0 })
+    const platform = { platform: 'darwin' as const } as any
+    const res = await handleApiRequest('GET', '/api/sessions/sid/interrupt-redirect', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(403)
+  })
+
+  it('allows same-origin Origin header', async () => {
+    const fakeReq = { headers: { origin: 'http://localhost:1234' } } as any
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, ppid: 0 })
+    const platform = { platform: 'darwin' as const } as any
+    const res = await handleApiRequest('GET', '/api/sessions/sid/interrupt-redirect', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(302)
+  })
+})
+
+describe('GET /open-file-redirect', () => {
+  it('calls openFile when lastEditPath present, then redirects', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, lastEditPath: '/x/y.ts' })
+    const openFile = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, openFile } as any
+    const res = await handleApiRequest('GET', '/api/sessions/sid/open-file-redirect', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(302)
+    expect(openFile).toHaveBeenCalledWith('/x/y.ts')
+  })
+})
+
 describe('POST /focus-terminal', () => {
   it('returns 404 when session missing', async () => {
     const focusTerminal = vi.fn(async () => undefined)
