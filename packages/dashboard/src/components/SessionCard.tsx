@@ -1,5 +1,6 @@
 import type { SessionState } from '@claude-cockpit/shared'
 import { ctxColor, palette } from '../lib/colors.js'
+import { McpHealthBar } from './McpHealthBar.js'
 
 const STATUS_BG: Record<SessionState['status'], string> = {
   busy: palette.ok, idle: palette.muted, waiting: palette.info, closed: palette.crit,
@@ -39,6 +40,9 @@ export function SessionCard({ session: s }: { session: SessionState }) {
             ● {s.status}
           </span>
         </div>
+      </div>
+      <div className="mt-2">
+        <McpHealthBar servers={s.mcpServers} />
       </div>
     </div>
   )
