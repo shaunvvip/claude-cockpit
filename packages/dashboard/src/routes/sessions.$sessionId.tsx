@@ -1,0 +1,56 @@
+import { createRoute, useSearch, useParams } from '@tanstack/react-router'
+import { Route as Root } from './__root.js'
+import { useSessionStream } from '../hooks/useSessionStream.js'
+import { AlertBanner } from '../components/AlertBanner.js'
+
+export interface SessionsDetailSearch {
+  alert?: string
+}
+
+export const Route = createRoute({
+  getParentRoute: () => Root,
+  path: '/sessions/$sessionId',
+  validateSearch: (search: Record<string, unknown>): SessionsDetailSearch => {
+    const result: SessionsDetailSearch = {}
+    if (typeof search.alert === 'string') result.alert = search.alert
+    return result
+  },
+  component: SessionDetailPage,
+})
+
+function SessionDetailPage() {
+  const { sessionId } = useParams({ from: Route.id })
+  const { alert } = useSearch({ from: Route.id })
+  const { sessions } = useSessionStream()
+  const session = sessions.find((s) => s.sessionId === sessionId)
+
+  return (
+    <div>
+      <AlertBanner ruleId={alert} />
+      <div className="text-cockpit-muted text-[10px] mb-1">SESSION DETAIL</div>
+      <h1 className="text-cockpit-text font-semibold mb-3">
+        {session?.cwd.split('/').slice(-1)[0] ?? sessionId.slice(0, 8)}
+      </h1>
+      {!session && <p className="text-cockpit-muted">No live data for {sessionId.slice(0, 8)}. Waiting…</p>}
+      {session && (
+        <div className="grid grid-cols-3 gap-2 text-xs text-cockpit-text">
+          <div className="bg-cockpit-panel border border-cockpit-line rounded p-2">
+            <div className="text-cockpit-muted text-[10px]">CTX</div>
+            <div className="text-lg">{Math.round(session.ctxPct)}%</div>
+          </div>
+          <div className="bg-cockpit-panel border border-cockpit-line rounded p-2">
+            <div className="text-cockpit-muted text-[10px]">COST</div>
+            <div className="text-lg">${session.cost.toFixed(2)}</div>
+          </div>
+          <div className="bg-cockpit-panel border border-cockpit-line rounded p-2">
+            <div className="text-cockpit-muted text-[10px]">TOOLS</div>
+            <div className="text-lg">{session.tools.length}</div>
+          </div>
+        </div>
+      )}
+      <p className="text-cockpit-muted text-[10px] mt-4">
+        Charts & timeline coming in Slice 4.
+      </p>
+    </div>
+  )
+}
