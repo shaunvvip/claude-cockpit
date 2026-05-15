@@ -11,6 +11,7 @@ import { parseMcpConfig, getDefaultSettingsPath } from './mcp-inspector.js'
 import { getPlatformActions } from './platform/index.js'
 import { RuleEngine } from './rules/engine.js'
 import { ctxHighRule } from './rules/ctx-high.js'
+import { EventBuffer } from './event-buffer.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -69,6 +70,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     if (updated.transcriptPath && !watchers.has(frame.sessionId)) {
       const sessionId = frame.sessionId
       const w = new TranscriptWatcher(updated.transcriptPath, (e) => {
+        eventBuffer.push(sessionId, e)
         if (e.type === 'TOOL_USE') {
           const cur = registry.get(sessionId)
           if (!cur) return
@@ -117,8 +119,11 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     startedAt: Date.now(),
   })
 
+  const eventBuffer = new EventBuffer()
+
   const ruleEngine = new RuleEngine({
     rules: [ctxHighRule],   // Slice 2 will add 3 more
+    getRecentEvents: (sid) => eventBuffer.recent(sid, Date.now(), 30 * 60 * 1000),
   })
 
   // First-run test notification — surfaces macOS notification permission prompt early (R7)
