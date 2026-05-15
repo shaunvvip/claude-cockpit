@@ -15,3 +15,12 @@ function run(cmd: string, args: string[], stdin?: string): Promise<void> {
 export const openUrl        = (url: string)  => run('xdg-open', [url])
 export const openFile       = (path: string) => run(process.env.EDITOR ?? 'xdg-open', [path])
 export const clipboardWrite = (text: string) => run('xclip', ['-selection', 'clipboard'], text)
+
+export const notify = (args: { title: string; body: string; deepLink?: string }): Promise<void> => {
+  const body = args.body + (args.deepLink ? ` — ${args.deepLink}` : '')
+  return run('notify-send', ['--app-name=cockpit', args.title, body])
+}
+
+export const focusTerminal = (pid: number): Promise<void> => {
+  return run('wmctrl', ['-i', '-a', String(pid)]).catch(() => undefined)
+}

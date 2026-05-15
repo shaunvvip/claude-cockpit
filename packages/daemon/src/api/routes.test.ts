@@ -9,6 +9,8 @@ function makeCtx(registry = new SessionRegistry()) {
     openUrl: async () => undefined,
     openFile: async () => undefined,
     clipboardWrite: async () => undefined,
+    notify: async () => undefined,
+    focusTerminal: async () => undefined,
   }
   return { registry, platform, port: 5050 }
 }
