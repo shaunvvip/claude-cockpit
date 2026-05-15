@@ -1,4 +1,7 @@
-import { spawn } from 'node:child_process'
+import { spawn, execFile as _execFile } from 'node:child_process'
+import { promisify } from 'node:util'
+
+const execFileP = promisify(_execFile)
 
 function run(cmd: string, args: string[], stdin?: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -21,6 +24,17 @@ export const notify = (args: { title: string; body: string; deepLink?: string })
   return run('notify-send', ['--app-name=cockpit', args.title, body])
 }
 
-export const focusTerminal = (pid: number): Promise<void> => {
-  return run('wmctrl', ['-i', '-a', String(pid)]).catch(() => undefined)
+export const focusTerminal = async (pid: number): Promise<void> => {
+  try {
+    const { stdout } = await execFileP('wmctrl', ['-l', '-p'])
+    for (const line of stdout.split('\n')) {
+      const cols = line.trim().split(/\s+/)
+      if (cols.length < 4) continue
+      // cols: <xid> <desktop> <pid> <host> <title...>
+      if (Number(cols[2]) === pid) {
+        await run('wmctrl', ['-i', '-a', cols[0]!])
+        return
+      }
+    }
+  } catch { /* soft fail */ }
 }

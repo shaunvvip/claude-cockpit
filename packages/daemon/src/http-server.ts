@@ -66,6 +66,7 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
         registry: opts.registry,
         platform: opts.platform,
         port: boundPort,
+        request: req,
       })
       if (apiRes) {
         res.writeHead(apiRes.status, { 'Content-Type': apiRes.contentType })

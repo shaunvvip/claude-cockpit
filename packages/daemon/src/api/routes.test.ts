@@ -1,7 +1,14 @@
 import { describe, it, expect, vi } from 'vitest'
+import { Readable } from 'node:stream'
+import type { IncomingMessage } from 'node:http'
 import { handleApiRequest } from './routes.js'
 import { SessionRegistry } from '../session-registry.js'
 import type { PlatformActions } from '../platform/index.js'
+
+function makeFakeRequest(body: string): IncomingMessage {
+  const r = Readable.from(Buffer.from(body)) as unknown as IncomingMessage
+  return r
+}
 
 vi.mock('node:child_process', () => ({
   execFile: (_cmd: string, _args: string[], cb: (e: unknown, r: { stdout: string }) => void) => {
@@ -116,5 +123,124 @@ describe('POST /open-file', () => {
     expect(res?.status).toBe(200)
     expect(openFile).toHaveBeenCalledWith('/x/y.ts')
     expect(JSON.parse(res!.body).path).toBe('/x/y.ts')
+  })
+})
+
+describe('POST /copy-info', () => {
+  it('returns 404 for unknown session', async () => {
+    const platform = { platform: 'darwin' as const, clipboardWrite: vi.fn(async () => undefined) } as any
+    const fakeReq = makeFakeRequest(JSON.stringify({ field: 'cost' }))
+    const res = await handleApiRequest('POST', '/api/sessions/nope/copy-info', { registry: new SessionRegistry(), platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(404)
+  })
+
+  it('returns 400 on missing field', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, cost: 1.23 })
+    const clipboardWrite = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, clipboardWrite } as any
+    const fakeReq = makeFakeRequest('{}')
+    const res = await handleApiRequest('POST', '/api/sessions/sid/copy-info', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(400)
+  })
+
+  it('returns 400 on invalid JSON body', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, cost: 1.23 })
+    const clipboardWrite = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, clipboardWrite } as any
+    const fakeReq = makeFakeRequest('not-json')
+    const res = await handleApiRequest('POST', '/api/sessions/sid/copy-info', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(400)
+  })
+
+  it('returns 400 when request is missing from context', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, cost: 1.23 })
+    const clipboardWrite = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, clipboardWrite } as any
+    const res = await handleApiRequest('POST', '/api/sessions/sid/copy-info', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(400)
+  })
+
+  it('copies cost', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, cost: 1.23 })
+    const clipboardWrite = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, clipboardWrite } as any
+    const fakeReq = makeFakeRequest(JSON.stringify({ field: 'cost' }))
+    const res = await handleApiRequest('POST', '/api/sessions/sid/copy-info', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(200)
+    expect(clipboardWrite).toHaveBeenCalledWith('1.23')
+  })
+
+  it('copies sessionId', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0 })
+    const clipboardWrite = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, clipboardWrite } as any
+    const fakeReq = makeFakeRequest(JSON.stringify({ field: 'sessionId' }))
+    const res = await handleApiRequest('POST', '/api/sessions/sid/copy-info', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(200)
+    expect(clipboardWrite).toHaveBeenCalledWith('sid')
+  })
+
+  it('copies transcriptPath', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, transcriptPath: '/path/to/t.jsonl' })
+    const clipboardWrite = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, clipboardWrite } as any
+    const fakeReq = makeFakeRequest(JSON.stringify({ field: 'transcriptPath' }))
+    const res = await handleApiRequest('POST', '/api/sessions/sid/copy-info', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(200)
+    expect(clipboardWrite).toHaveBeenCalledWith('/path/to/t.jsonl')
+  })
+
+  it('copies cwd', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, cwd: '/home/user/project' })
+    const clipboardWrite = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, clipboardWrite } as any
+    const fakeReq = makeFakeRequest(JSON.stringify({ field: 'cwd' }))
+    const res = await handleApiRequest('POST', '/api/sessions/sid/copy-info', { registry, platform, port: 1234, request: fakeReq })
+    expect(res?.status).toBe(200)
+    expect(clipboardWrite).toHaveBeenCalledWith('/home/user/project')
+  })
+})
+
+describe('POST /focus-terminal', () => {
+  it('returns 404 when session missing', async () => {
+    const focusTerminal = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, focusTerminal } as any
+    const res = await handleApiRequest('POST', '/api/sessions/nope/focus-terminal', { registry: new SessionRegistry(), platform, port: 1234 })
+    expect(res?.status).toBe(404)
+  })
+
+  it('returns 422 when ppid is 0', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, ppid: 0 })
+    const focusTerminal = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, focusTerminal } as any
+    const res = await handleApiRequest('POST', '/api/sessions/sid/focus-terminal', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(422)
+  })
+
+  it('calls platform.focusTerminal with ppid', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, ppid: 4321 })
+    const focusTerminal = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, focusTerminal } as any
+    const res = await handleApiRequest('POST', '/api/sessions/sid/focus-terminal', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(200)
+    expect(focusTerminal).toHaveBeenCalledWith(4321)
+  })
+
+  it('soft-fails when focusTerminal rejects', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, ppid: 999 })
+    const focusTerminal = vi.fn(async () => { throw new Error('wmctrl not found') })
+    const platform = { platform: 'darwin' as const, focusTerminal } as any
+    const res = await handleApiRequest('POST', '/api/sessions/sid/focus-terminal', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(200)
   })
 })

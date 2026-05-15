@@ -1,6 +1,7 @@
 import { promisify } from 'node:util'
 import { execFile as _execFile } from 'node:child_process'
 import { readlink as _readlink } from 'node:fs/promises'
+import type { IncomingMessage } from 'node:http'
 import type { SessionRegistry } from '../session-registry.js'
 import type { PlatformActions } from '../platform/index.js'
 
@@ -30,6 +31,16 @@ export interface ApiContext {
   registry: SessionRegistry
   platform: PlatformActions
   port: number
+  request?: IncomingMessage    // optional for backward-compat with existing tests
+}
+
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let buf = ''
+    req.on('data', (c) => buf += c)
+    req.on('end', () => resolve(buf))
+    req.on('error', reject)
+  })
 }
 
 export async function handleApiRequest(
@@ -78,6 +89,36 @@ export async function handleApiRequest(
     } catch (e) {
       return json(422, { error: 'stop-unavailable', reason: String(e) })
     }
+    return json(200, { ok: true })
+  }
+
+  const copyInfo = url.match(/^\/api\/sessions\/([^/]+)\/copy-info$/)
+  if (method === 'POST' && copyInfo) {
+    const s = ctx.registry.get(copyInfo[1]!)
+    if (!s) return json(404, { error: 'session not found' })
+    if (!ctx.request) return json(400, { error: 'missing request' })
+    const body = await readBody(ctx.request)
+    let parsed: { field?: string }
+    try { parsed = JSON.parse(body) } catch { return json(400, { error: 'invalid body' }) }
+    const field = parsed.field
+    let text: string
+    switch (field) {
+      case 'sessionId':      text = s.sessionId; break
+      case 'cost':           text = s.cost.toFixed(2); break
+      case 'transcriptPath': text = s.transcriptPath; break
+      case 'cwd':            text = s.cwd; break
+      default:               return json(400, { error: 'unknown field' })
+    }
+    await ctx.platform.clipboardWrite(text)
+    return json(200, { ok: true, copied: text })
+  }
+
+  const focus = url.match(/^\/api\/sessions\/([^/]+)\/focus-terminal$/)
+  if (method === 'POST' && focus) {
+    const s = ctx.registry.get(focus[1]!)
+    if (!s) return json(404, { error: 'session not found' })
+    if (s.ppid <= 0) return json(422, { error: 'no ppid' })
+    await ctx.platform.focusTerminal(s.ppid).catch(() => undefined)
     return json(200, { ok: true })
   }
 
