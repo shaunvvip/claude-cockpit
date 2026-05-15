@@ -2,6 +2,7 @@ import { createRoute, useSearch, useParams } from '@tanstack/react-router'
 import { Route as Root } from './__root.js'
 import { useSessionStream } from '../hooks/useSessionStream.js'
 import { AlertBanner } from '../components/AlertBanner.js'
+import { ControlButtons } from '../components/ControlButtons.js'
 
 export interface SessionsDetailSearch {
   alert?: string
@@ -31,6 +32,7 @@ function SessionDetailPage() {
       <h1 className="text-cockpit-text font-semibold mb-3">
         {session?.cwd.split('/').slice(-1)[0] ?? sessionId.slice(0, 8)}
       </h1>
+      <div className="mb-3"><ControlButtons sessionId={sessionId} /></div>
       {!session && <p className="text-cockpit-muted">No live data for {sessionId.slice(0, 8)}. Waiting…</p>}
       {session && (
         <div className="grid grid-cols-3 gap-2 text-xs text-cockpit-text">
