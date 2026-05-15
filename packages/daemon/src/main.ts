@@ -15,6 +15,7 @@ import { costSpikeRule } from './rules/cost-spike.js'
 import { loopDetectRule } from './rules/loop-detect.js'
 import { subagentStuckRule } from './rules/subagent-stuck.js'
 import { EventBuffer } from './event-buffer.js'
+import { loadConfig } from './config-loader.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -124,8 +125,11 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
 
   const eventBuffer = new EventBuffer()
 
+  const cockpitCfg = loadConfig()
   const ruleEngine = new RuleEngine({
     rules: [ctxHighRule, costSpikeRule, loopDetectRule, subagentStuckRule],
+    config: cockpitCfg.ruleConfig,
+    disabledRuleIds: cockpitCfg.disabledRules,
     getRecentEvents: (sid) => eventBuffer.recent(sid, Date.now(), 30 * 60 * 1000),
   })
 
