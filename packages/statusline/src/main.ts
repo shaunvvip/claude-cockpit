@@ -55,8 +55,8 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
     todosDone,
     todosTotal,
     dashboardUrl: `http://localhost:${port}/sessions/${parsed.sessionId}`,
-    stopUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/interrupt`,
-    fileUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/open-file`,
+    stopUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/interrupt-redirect`,
+    fileUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/open-file-redirect`,
     supportsOsc8: deps.detect(),
   })
 }
