@@ -11,6 +11,7 @@ import { parseMcpConfig, getDefaultSettingsPath } from './mcp-inspector.js'
 import { getPlatformActions } from './platform/index.js'
 import { RuleEngine } from './rules/engine.js'
 import { ctxHighRule } from './rules/ctx-high.js'
+import { costSpikeRule } from './rules/cost-spike.js'
 import { EventBuffer } from './event-buffer.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -122,7 +123,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
   const eventBuffer = new EventBuffer()
 
   const ruleEngine = new RuleEngine({
-    rules: [ctxHighRule],   // Slice 2 will add 3 more
+    rules: [ctxHighRule, costSpikeRule],
     getRecentEvents: (sid) => eventBuffer.recent(sid, Date.now(), 30 * 60 * 1000),
   })
 
