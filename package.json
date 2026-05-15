@@ -1,0 +1,19 @@
+{
+  "name": "claude-cockpit-monorepo",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "build": "npm run -ws --if-present build",
+    "test": "vitest run",
+    "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
+    "typecheck": "npm run -ws --if-present typecheck",
+    "lint": "echo 'lint placeholder — wired up in later task'"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0",
+    "vitest": "^1.6.0",
+    "@types/node": "^20.12.0"
+  }
+}
