@@ -32,10 +32,11 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
 
   const registry = new SessionRegistry()
 
-  const dashboardDist = findDashboardDist()
+  const dist = findDashboardDist()
   const http = await startHttpServer({
     port: opts.port ?? 0,
-    ...(dashboardDist !== undefined ? { staticDir: dashboardDist } : {}),
+    registry,
+    ...(dist !== undefined && { staticDir: dist }),
   })
   const sock = await startSocketServer(getSocketPath(), (frame) => {
     if (frame.type === 'UPDATE_SESSION') {

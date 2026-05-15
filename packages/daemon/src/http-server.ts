@@ -2,6 +2,8 @@ import { createServer, IncomingMessage, ServerResponse, Server } from 'node:http
 import { WebSocketServer, type WebSocket } from 'ws'
 import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
+import type { SessionRegistry } from './session-registry.js'
+import { handleApiRequest } from './api/routes.js'
 
 export interface HttpServer {
   port: number
@@ -12,6 +14,7 @@ export interface HttpServer {
 export interface HttpServerOptions {
   port: number
   staticDir?: string
+  registry?: SessionRegistry
 }
 
 const MIME: Record<string, string> = {
@@ -52,6 +55,14 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
       return
+    }
+    if (req.method && req.url && opts.registry) {
+      const apiRes = handleApiRequest(req.method, req.url, opts.registry)
+      if (apiRes) {
+        res.writeHead(apiRes.status, { 'Content-Type': apiRes.contentType })
+        res.end(apiRes.body)
+        return
+      }
     }
     if (req.method === 'GET' && opts.staticDir && serveStatic(opts.staticDir, req.url ?? '/', res)) {
       return
