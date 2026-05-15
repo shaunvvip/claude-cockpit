@@ -9,6 +9,8 @@ import { TranscriptWatcher } from './transcript-watcher.js'
 import { computeCtxPct } from './ctx-calc.js'
 import { parseMcpConfig, getDefaultSettingsPath } from './mcp-inspector.js'
 import { getPlatformActions } from './platform/index.js'
+import { RuleEngine } from './rules/engine.js'
+import { ctxHighRule } from './rules/ctx-high.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -107,12 +109,34 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     startedAt: Date.now(),
   })
 
+  const ruleEngine = new RuleEngine({
+    rules: [ctxHighRule],   // Slice 2 will add 3 more
+  })
+
+  // First-run test notification — surfaces macOS notification permission prompt early (R7)
+  void platform.notify({
+    title: 'claude-cockpit ready',
+    body: 'Alerts enabled. You can disable rules in ~/.claude-cockpit/config.json.',
+  }).catch(() => undefined)
+
+  const ruleTick = setInterval(() => {
+    const alerts = ruleEngine.tick(registry.list())
+    for (const alert of alerts) {
+      const deepLink = `http://localhost:${http.port}/sessions/${alert.sessionId}?alert=${alert.ruleId}`
+      void platform.notify({ title: alert.title, body: alert.body, deepLink }).catch((e) => {
+        console.error('[cockpit] notify failed:', e)
+      })
+      broadcaster.publishAlert(alert)
+    }
+  }, 10_000)
+
   // Forward-declare shutdown so the timer callback can reference it
   let shutdownInvoked = false
   const shutdown = async (): Promise<void> => {
     if (shutdownInvoked) return
     shutdownInvoked = true
     clearInterval(idleTimer)
+    clearInterval(ruleTick)
     for (const w of watchers.values()) {
       try { await w.stop() } catch { /* */ }
     }
