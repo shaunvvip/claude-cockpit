@@ -7,6 +7,7 @@ export type TranscriptEvent =
   | { type: 'TOOL_USE'; name: string; ts: number }
   | { type: 'USAGE'; inputTokens: number; outputTokens: number; cacheReadTokens: number; ts: number }
   | { type: 'TODOS'; items: { text: string; completed: boolean }[]; ts: number }
+  | { type: 'FILE_EDIT'; path: string; tool: 'Edit' | 'Write' | 'Read'; ts: number }
 
 export type TranscriptListener = (event: TranscriptEvent) => void
 
@@ -58,6 +59,20 @@ export class TranscriptWatcher {
           const i = item as Record<string, unknown>
           if (i.type === 'tool_use' && typeof i.name === 'string') {
             this.listener({ type: 'TOOL_USE', name: i.name, ts })
+
+            // FILE_EDIT extraction for Edit / Write / Read
+            if (i.name === 'Edit' || i.name === 'Write' || i.name === 'Read') {
+              const input = i.input as Record<string, unknown> | undefined
+              const filePath = input?.file_path
+              if (typeof filePath === 'string' && filePath.length > 0) {
+                this.listener({
+                  type: 'FILE_EDIT',
+                  path: filePath,
+                  tool: i.name as 'Edit' | 'Write' | 'Read',
+                  ts,
+                })
+              }
+            }
           }
         }
       }
