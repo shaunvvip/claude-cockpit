@@ -184,6 +184,11 @@ Restart Claude Code. First refresh lazy-starts the daemon. Click `[dash]` to ope
 - macOS Terminal.app falls back to plain text (no clickable links)
 - Use `/cockpit:open` slash command as a universal fallback (Phase 4)
 
+> **How to click the links**: OSC 8 hyperlinks require a modifier key on most
+> terminals — **⌘-click** on macOS (iTerm2, Ghostty, VS Code), **Ctrl-click**
+> on Linux (WezTerm, Kitty). A plain click does nothing on purpose, to avoid
+> accidental navigation while editing.
+
 ## Privacy
 
 The daemon stores **only session metadata** (cwd, model, tokens, tool names — NOT transcript content). Everything is local — zero external requests. Code is auditable.
