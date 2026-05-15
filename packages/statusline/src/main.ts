@@ -28,6 +28,10 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
       ppid: process.ppid,         // statusline subprocess's parent — Claude Code main
       ...(parsed.branch !== undefined && { branch: parsed.branch }),
       ...(parsed.cost !== undefined && { cost: parsed.cost }),
+      ...(parsed.usage5hPct !== undefined && { usage5hPct: parsed.usage5hPct }),
+      ...(parsed.usage5hResetAt !== undefined && { usage5hResetAt: parsed.usage5hResetAt }),
+      ...(parsed.usage7dPct !== undefined && { usage7dPct: parsed.usage7dPct }),
+      ...(parsed.usage7dResetAt !== undefined && { usage7dResetAt: parsed.usage7dResetAt }),
       lastUpdate: Date.now(),
     })
   }
@@ -49,6 +53,12 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
   const todosDone = merged?.todos.filter((t) => t.completed).length ?? 0
   const todosTotal = merged?.todos.length ?? 0
 
+  // Prefer fresh stdin values over the daemon's cached copy (same rationale as cost)
+  const usage5hPct = parsed.usage5hPct ?? merged?.usage5hPct
+  const usage5hResetAt = parsed.usage5hResetAt ?? merged?.usage5hResetAt
+  const usage7dPct = parsed.usage7dPct ?? merged?.usage7dPct
+  const usage7dResetAt = parsed.usage7dResetAt ?? merged?.usage7dResetAt
+
   return renderEssential({
     sessionId: parsed.sessionId,
     cwd: parsed.cwd,
@@ -60,6 +70,10 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
     subagentCount: 0,
     todosDone,
     todosTotal,
+    ...(usage5hPct !== undefined && { usage5hPct }),
+    ...(usage5hResetAt !== undefined && { usage5hResetAt }),
+    ...(usage7dPct !== undefined && { usage7dPct }),
+    ...(usage7dResetAt !== undefined && { usage7dResetAt }),
     dashboardUrl: `http://localhost:${port}/sessions/${parsed.sessionId}`,
     stopUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/interrupt-redirect`,
     fileUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/open-file-redirect`,

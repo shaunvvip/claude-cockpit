@@ -51,4 +51,51 @@ describe('parseStatuslineInput', () => {
     const parsed = parseStatuslineInput(raw)
     expect(parsed?.cost).toBeUndefined()
   })
+
+  it('extracts 5h + 7d rate_limits with ISO resets_at', () => {
+    const future = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString()
+    const raw = JSON.stringify({
+      session_id: 'sid', cwd: '/x', model: { id: 'm' }, transcript_path: '/t',
+      rate_limits: {
+        five_hour: { used_percentage: 25, resets_at: future },
+        seven_day: { used_percentage: 12, resets_at: future },
+      },
+    })
+    const parsed = parseStatuslineInput(raw)
+    expect(parsed?.usage5hPct).toBe(25)
+    expect(parsed?.usage7dPct).toBe(12)
+    expect(parsed?.usage5hResetAt).toBeDefined()
+    expect(parsed?.usage5hResetAt! > Date.now()).toBe(true)
+  })
+
+  it('clamps usage percentages to [0, 100]', () => {
+    const raw = JSON.stringify({
+      session_id: 'sid', cwd: '/x', model: { id: 'm' }, transcript_path: '/t',
+      rate_limits: { five_hour: { used_percentage: 150 }, seven_day: { used_percentage: -5 } },
+    })
+    const parsed = parseStatuslineInput(raw)
+    expect(parsed?.usage5hPct).toBe(100)
+    expect(parsed?.usage7dPct).toBe(0)
+  })
+
+  it('handles seconds-epoch resets_at (older CC versions)', () => {
+    const futureSec = Math.floor(Date.now() / 1000) + 3600
+    const raw = JSON.stringify({
+      session_id: 'sid', cwd: '/x', model: { id: 'm' }, transcript_path: '/t',
+      rate_limits: { five_hour: { used_percentage: 50, resets_at: futureSec } },
+    })
+    const parsed = parseStatuslineInput(raw)
+    expect(parsed?.usage5hResetAt).toBeDefined()
+    // Should be normalized to ms epoch
+    expect(parsed?.usage5hResetAt! > 1e12).toBe(true)
+  })
+
+  it('omits usage fields when rate_limits is missing', () => {
+    const raw = JSON.stringify({
+      session_id: 'sid', cwd: '/x', model: { id: 'm' }, transcript_path: '/t',
+    })
+    const parsed = parseStatuslineInput(raw)
+    expect(parsed?.usage5hPct).toBeUndefined()
+    expect(parsed?.usage7dPct).toBeUndefined()
+  })
 })

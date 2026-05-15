@@ -28,11 +28,41 @@ export interface EssentialInput extends RenderInput {
   todosTotal: number
   stopUrl: string
   fileUrl: string
+  usage5hPct?: number
+  usage5hResetAt?: number
+  usage7dPct?: number
+  usage7dResetAt?: number
+  now?: number   // injectable for tests
 }
 
 function progressBar(pct: number, width = 10): string {
   const filled = Math.round((Math.max(0, Math.min(100, pct)) / 100) * width)
   return `[${'█'.repeat(filled)}${'░'.repeat(width - filled)}]`
+}
+
+/**
+ * Compact countdown:  "2h 30m" / "5d 12h" / "25m" / "<1m"
+ * Returns empty string if resetAt is in the past or undefined.
+ */
+export function formatCountdown(resetAt: number | undefined, now: number): string {
+  if (resetAt === undefined) return ''
+  const diffMs = resetAt - now
+  if (diffMs <= 0) return ''
+  const m = Math.floor(diffMs / 60_000)
+  if (m < 1) return '<1m'
+  if (m < 60) return `${m}m`
+  const h = Math.floor(m / 60)
+  const remMin = m - h * 60
+  if (h < 24) return remMin > 0 ? `${h}h ${remMin}m` : `${h}h`
+  const d = Math.floor(h / 24)
+  const remH = h - d * 24
+  return remH > 0 ? `${d}d ${remH}h` : `${d}d`
+}
+
+function renderUsageSegment(label: '5h' | '7d', pct: number | undefined, resetAt: number | undefined, now: number): string | null {
+  if (pct === undefined) return null
+  const cd = formatCountdown(resetAt, now)
+  return cd ? `${label} ${Math.round(pct)}% (${cd})` : `${label} ${Math.round(pct)}%`
 }
 
 export function renderEssential(input: EssentialInput): string {
@@ -41,6 +71,15 @@ export function renderEssential(input: EssentialInput): string {
   const dash = osc8(input.dashboardUrl, '[dash]', input.supportsOsc8)
   const stop = osc8(input.stopUrl,      '[stop]', input.supportsOsc8)
   const file = osc8(input.fileUrl,      '[file]', input.supportsOsc8)
-  const line2 = `tools ${input.toolsCount}↑ · subagents ×${input.subagentCount} · todos ${input.todosDone}/${input.todosTotal} · ${dash} ${stop} ${file}`
+  const now = input.now ?? Date.now()
+  const seg5h = renderUsageSegment('5h', input.usage5hPct, input.usage5hResetAt, now)
+  const seg7d = renderUsageSegment('7d', input.usage7dPct, input.usage7dResetAt, now)
+  const middle = [
+    `tools ${input.toolsCount}↑`,
+    `todos ${input.todosDone}/${input.todosTotal}`,
+    seg5h,
+    seg7d,
+  ].filter((s): s is string => s !== null).join(' · ')
+  const line2 = `${middle} · ${dash} ${stop} ${file}`
   return `${line1}\n${line2}`
 }

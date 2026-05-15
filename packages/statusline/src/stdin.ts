@@ -5,6 +5,27 @@ export interface StatuslineInput {
   transcriptPath: string
   branch?: string
   cost?: number
+  usage5hPct?: number
+  usage5hResetAt?: number   // ms epoch
+  usage7dPct?: number
+  usage7dResetAt?: number
+}
+
+function parseResetAt(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v) && v > 0) {
+    // CC may emit either seconds or ms epoch; values < 1e12 are seconds
+    return v < 1e12 ? v * 1000 : v
+  }
+  if (typeof v === 'string' && v.trim()) {
+    const t = new Date(v).getTime()
+    return Number.isNaN(t) ? undefined : t
+  }
+  return undefined
+}
+
+function parsePct(v: unknown): number | undefined {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return undefined
+  return Math.max(0, Math.min(100, v))
 }
 
 export function parseStatuslineInput(raw: string): StatuslineInput | null {
@@ -39,9 +60,32 @@ export function parseStatuslineInput(raw: string): StatuslineInput | null {
     if (typeof c === 'number' && Number.isFinite(c)) cost = c
   }
 
+  // Subscriber usage limits (5h + 7d windows). Optional — older CC versions don't emit.
+  let usage5hPct: number | undefined
+  let usage5hResetAt: number | undefined
+  let usage7dPct: number | undefined
+  let usage7dResetAt: number | undefined
+  const rl = v.rate_limits
+  if (rl && typeof rl === 'object') {
+    const five = (rl as Record<string, unknown>).five_hour as Record<string, unknown> | undefined
+    if (five) {
+      usage5hPct = parsePct(five.used_percentage)
+      usage5hResetAt = parseResetAt(five.resets_at)
+    }
+    const seven = (rl as Record<string, unknown>).seven_day as Record<string, unknown> | undefined
+    if (seven) {
+      usage7dPct = parsePct(seven.used_percentage)
+      usage7dResetAt = parseResetAt(seven.resets_at)
+    }
+  }
+
   return {
     sessionId, cwd, model, transcriptPath,
     ...(branch !== undefined && { branch }),
     ...(cost !== undefined && { cost }),
+    ...(usage5hPct !== undefined && { usage5hPct }),
+    ...(usage5hResetAt !== undefined && { usage5hResetAt }),
+    ...(usage7dPct !== undefined && { usage7dPct }),
+    ...(usage7dResetAt !== undefined && { usage7dResetAt }),
   }
 }

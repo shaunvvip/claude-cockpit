@@ -46,4 +46,9 @@ export interface SessionState {
   branch?: string
   lastEditPath?: string
   lastEditTs?: number
+  // Claude Code subscriber usage windows (from stdin rate_limits)
+  usage5hPct?: number       // 0..100
+  usage5hResetAt?: number   // ms epoch
+  usage7dPct?: number
+  usage7dResetAt?: number
 }

@@ -8,6 +8,7 @@ import { CtxChart } from '../components/CtxChart.js'
 import { ToolBarChart } from '../components/ToolBarChart.js'
 import { TodosPanel } from '../components/TodosPanel.js'
 import { EventTimeline } from '../components/EventTimeline.js'
+import { UsageBars } from '../components/UsageBars.js'
 
 export interface SessionsDetailSearch {
   alert?: string
@@ -58,6 +59,13 @@ function SessionDetailPage() {
               <div className="text-lg">{session.cacheReadTokens ?? 0}</div>
             </div>
           </div>
+
+          {(session.usage5hPct !== undefined || session.usage7dPct !== undefined) && (
+            <div className="bg-cockpit-panel border border-cockpit-line rounded p-3 mb-2">
+              <div className="text-cockpit-muted text-[10px] mb-2">SUBSCRIBER USAGE</div>
+              <UsageBars session={session} />
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-2 mb-2">
             <ToolBarChart events={events} />
