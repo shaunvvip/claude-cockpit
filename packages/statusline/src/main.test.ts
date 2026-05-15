@@ -26,12 +26,14 @@ describe('runStatusline', () => {
     })
     const lines = out.split('\n')
     expect(lines).toHaveLength(2)
+    // Line 1: identity + work + links
     expect(lines[0]).toContain('m')
     expect(lines[0]).toContain('z')
     expect(lines[0]).toContain('main')
-    expect(lines[0]).toContain('47%')
-    expect(lines[1]).toContain('1/2')   // todos
-    expect(lines[1]).toContain('[dash]')
+    expect(lines[0]).toContain('1/2')   // todos
+    expect(lines[0]).toContain('[dash]')
+    // Line 2: gauges
+    expect(lines[1]).toContain('47%')
   })
 
   it('returns fallback text when stdin not parseable', async () => {

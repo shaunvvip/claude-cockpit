@@ -59,7 +59,7 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
     sessionId: parsed.sessionId,
     cwd: parsed.cwd,
     model: parsed.model,
-    branch: parsed.branch ?? 'detached',
+    ...(parsed.branch !== undefined && { branch: parsed.branch }),
     ctxPct,
     toolsCount,
     subagentCount: 0,

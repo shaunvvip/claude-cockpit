@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { renderMinimal, renderEssential, formatCountdown } from './render.js'
 
 describe('renderMinimal', () => {
-  it('outputs one line with model, cwd, branch, ctx (cost no longer displayed)', () => {
+  it('outputs one line with model, cwd, branch, ctx', () => {
     const out = renderMinimal({
       sessionId: 'abc', cwd: '/home/me/proj', model: 'claude-opus-4-7',
       branch: 'main', ctxPct: 47,
@@ -12,9 +12,21 @@ describe('renderMinimal', () => {
     expect(out).toContain('proj')
     expect(out).toContain('main')
     expect(out).toContain('47%')
-    expect(out).not.toContain('$')          // cost intentionally removed
+    expect(out).not.toContain('$')
     expect(out).toContain('[cockpit]')
-    expect(out).toContain('\x1b[32m')       // green ctx color (47% < 70 threshold)
+    expect(out).toContain('\x1b[32m')
+  })
+
+  it('omits branch segment when undefined (no more "detached" placeholder)', () => {
+    const out = renderMinimal({
+      sessionId: 'abc', cwd: '/x', model: 'm',
+      ctxPct: 0,
+      dashboardUrl: 'http://localhost:5050/sessions/abc', supportsOsc8: false,
+    })
+    expect(out).not.toContain('detached')
+    // structure: ● m · x · ctx 0% · [cockpit]   (no branch slot)
+    const parts = out.split(' · ')
+    expect(parts).toHaveLength(4)
   })
 
   it('emits OSC 8 escape sequences when supported', () => {
@@ -29,7 +41,7 @@ describe('renderMinimal', () => {
 })
 
 describe('renderEssential', () => {
-  it('outputs two lines with progress bar and link set', () => {
+  it('line 1 carries identity + work + links; line 2 carries gauges', () => {
     const out = renderEssential({
       sessionId: 'sid', cwd: '/a/b/c', model: 'm', branch: 'main',
       ctxPct: 50, toolsCount: 7, subagentCount: 2,
@@ -37,27 +49,36 @@ describe('renderEssential', () => {
       dashboardUrl: 'http://l/s', stopUrl: 'http://l/stop', fileUrl: 'http://l/file',
       supportsOsc8: false,
     })
-    const lines = out.split('\n')
-    expect(lines).toHaveLength(2)
-    expect(lines[0]).toContain('50%')
-    expect(lines[0]).toContain('█████')   // 5 of 10 cells filled
-    expect(lines[0]).toContain('░░░░░')   // 5 empty
-    expect(lines[1]).toContain('7')
-    expect(lines[1]).toContain('2/5')
-    expect(lines[1]).toContain('[dash]')
-    expect(lines[1]).toContain('[stop]')
-    expect(lines[1]).toContain('[file]')
+    const [line1, line2] = out.split('\n')
+    // line 1: model · cwd · branch · tools · todos · [dash] [stop] [file]
+    expect(line1).toContain('m')
+    expect(line1).toContain('c')        // cwd basename
+    expect(line1).toContain('main')
+    expect(line1).toContain('tools 7↑')
+    expect(line1).toContain('2/5')
+    expect(line1).toContain('[dash]')
+    expect(line1).toContain('[stop]')
+    expect(line1).toContain('[file]')
+    // line 2: ctx N% bar
+    expect(line2).toContain('50%')
+    expect(line2).toContain('█████')   // 5 of 10 cells filled
+    expect(line2).toContain('░░░░░')
+    // no leakage between lines
+    expect(line1).not.toContain('ctx ')
+    expect(line2).not.toContain('[dash]')
   })
 
-  it('progress bar is empty at 0% and full at 100%', () => {
+  it('progress bar is empty at 0% and full at 100% (line 2)', () => {
     const base = {
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
       toolsCount: 0, subagentCount: 0, todosDone: 0, todosTotal: 0,
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
     } as const
-    expect(renderEssential({ ...base, ctxPct: 0 })).toContain('░░░░░░░░░░')
-    expect(renderEssential({ ...base, ctxPct: 100 })).toContain('██████████')
+    const at0 = renderEssential({ ...base, ctxPct: 0 }).split('\n')[1]!
+    const at100 = renderEssential({ ...base, ctxPct: 100 }).split('\n')[1]!
+    expect(at0).toContain('░░░░░░░░░░')
+    expect(at100).toContain('██████████')
   })
 
   it('ctx bar uses RED ANSI at >=85% and GREEN at low', () => {
@@ -67,12 +88,12 @@ describe('renderEssential', () => {
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
     } as const
-    expect(renderEssential({ ...base, ctxPct: 90 })).toContain('\x1b[31m')  // red
-    expect(renderEssential({ ...base, ctxPct: 20 })).toContain('\x1b[32m')  // green
-    expect(renderEssential({ ...base, ctxPct: 75 })).toContain('\x1b[33m')  // yellow
+    expect(renderEssential({ ...base, ctxPct: 90 }).split('\n')[1]).toContain('\x1b[31m')
+    expect(renderEssential({ ...base, ctxPct: 20 }).split('\n')[1]).toContain('\x1b[32m')
+    expect(renderEssential({ ...base, ctxPct: 75 }).split('\n')[1]).toContain('\x1b[33m')
   })
 
-  it('usage segments include mini bar with quota colors', () => {
+  it('usage segments share line 2 with ctx, colored by quota thresholds', () => {
     const now = 1_000_000_000
     const out = renderEssential({
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
@@ -84,10 +105,11 @@ describe('renderEssential', () => {
       now,
     })
     const line2 = out.split('\n')[1]!
+    expect(line2).toContain('ctx ')
     expect(line2).toContain('5h ')
     expect(line2).toContain('7d ')
-    expect(line2).toContain('\x1b[31m')   // 92% triggers RED for 5h
-    expect(line2).toContain('\x1b[94m')   // 30% triggers BRIGHT_BLUE for 7d
+    expect(line2).toContain('\x1b[31m')   // 92% → RED for 5h
+    expect(line2).toContain('\x1b[94m')   // 30% → BRIGHT_BLUE for 7d
   })
 
   it('renders 5h + 7d usage segments with countdown when present', () => {
@@ -104,23 +126,35 @@ describe('renderEssential', () => {
       now,
     })
     const line2 = out.split('\n')[1]!
-    expect(line2).toContain('5h ')
     expect(line2).toContain('25%')
     expect(line2).toContain('(2h 30m)')
-    expect(line2).toContain('7d ')
     expect(line2).toContain('12%')
     expect(line2).toContain('(5d 12h)')
   })
 
-  it('omits usage segments when absent (degrades gracefully)', () => {
+  it('line 2 only has ctx when usage segments absent', () => {
     const out = renderEssential({
       sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
-      ctxPct: 0, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      ctxPct: 30, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
     })
-    expect(out).not.toContain('5h ')
-    expect(out).not.toContain('7d ')
+    const line2 = out.split('\n')[1]!
+    expect(line2).toContain('ctx ')
+    expect(line2).not.toContain('5h ')
+    expect(line2).not.toContain('7d ')
+  })
+
+  it('line 1 omits branch segment when undefined', () => {
+    const out = renderEssential({
+      sessionId: 's', cwd: '/x', model: 'm',
+      ctxPct: 30, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
+      supportsOsc8: false,
+    })
+    const line1 = out.split('\n')[0]!
+    expect(line1).not.toContain('detached')
+    expect(line1).not.toContain('main')
   })
 })
 

@@ -14,10 +14,12 @@ export interface RenderInput {
 
 export function renderMinimal(input: RenderInput): string {
   const cwdShort = basename(input.cwd) || input.cwd
-  const branch = input.branch ?? 'detached'
   const ctxColored = colorize(`${Math.round(input.ctxPct)}%`, getCtxColor(input.ctxPct))
   const link = osc8(input.dashboardUrl, '[cockpit]', input.supportsOsc8)
-  return `● ${input.model} · ${cwdShort} · ${branch} · ctx ${ctxColored} · ${link}`
+  const parts = [`● ${input.model}`, cwdShort]
+  if (input.branch) parts.push(input.branch)
+  parts.push(`ctx ${ctxColored}`, link)
+  return parts.join(' · ')
 }
 
 export interface EssentialInput extends RenderInput {
@@ -69,23 +71,28 @@ function renderUsageSegment(label: '5h' | '7d', pct: number | undefined, resetAt
 }
 
 export function renderEssential(input: EssentialInput): string {
-  const line1Base = renderMinimal(input).replace(/ · \S*\[cockpit\]\S*$/, '').replace(/ · \[cockpit\]$/, '')
-  // Replace the plain progressBar with a colored 10-cell ctx bar (no brackets,
-  // ANSI colors carry the visual weight).
-  const ctxBar = coloredBar(input.ctxPct, 10, getCtxColor)
-  const line1 = `${line1Base} ${ctxBar}`
+  // Line 1 — identity + active work + actionable links
+  //   ● model · cwd · branch? · tools N↑ · todos a/b · [dash] [stop] [file]
+  const cwdShort = basename(input.cwd) || input.cwd
   const dash = osc8(input.dashboardUrl, '[dash]', input.supportsOsc8)
   const stop = osc8(input.stopUrl,      '[stop]', input.supportsOsc8)
   const file = osc8(input.fileUrl,      '[file]', input.supportsOsc8)
+  const line1Parts = [`● ${input.model}`, cwdShort]
+  if (input.branch) line1Parts.push(input.branch)
+  line1Parts.push(`tools ${input.toolsCount}↑`)
+  line1Parts.push(`todos ${input.todosDone}/${input.todosTotal}`)
+  const line1 = `${line1Parts.join(' · ')} · ${dash} ${stop} ${file}`
+
+  // Line 2 — usage gauges all together
+  //   ctx N% ████░░░░░░ · 5h ▓▓░░░ X% (...) · 7d ▓░░░░ Y% (...)
   const now = input.now ?? Date.now()
+  const ctxPctColored = colorize(`${Math.round(input.ctxPct)}%`, getCtxColor(input.ctxPct))
+  const ctxBar = coloredBar(input.ctxPct, 10, getCtxColor)
   const seg5h = renderUsageSegment('5h', input.usage5hPct, input.usage5hResetAt, now)
   const seg7d = renderUsageSegment('7d', input.usage7dPct, input.usage7dResetAt, now)
-  const middle = [
-    `tools ${input.toolsCount}↑`,
-    `todos ${input.todosDone}/${input.todosTotal}`,
-    seg5h,
-    seg7d,
-  ].filter((s): s is string => s !== null).join(' · ')
-  const line2 = `${middle} · ${dash} ${stop} ${file}`
+  const line2Parts = [`ctx ${ctxPctColored} ${ctxBar}`, seg5h, seg7d]
+    .filter((s): s is string => s !== null && s.length > 0)
+  const line2 = line2Parts.join(' · ')
+
   return `${line1}\n${line2}`
 }
