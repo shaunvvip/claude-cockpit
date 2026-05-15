@@ -1,6 +1,7 @@
 import { parseStatuslineInput } from './stdin.js'
-import { renderMinimal } from './render.js'
+import { renderEssential } from './render.js'
 import type { RuntimeInfo } from '../../daemon/src/runtime-info.js'
+import type { SessionState } from '@claude-cockpit/shared'
 
 export interface RunStatuslineDeps {
   stdin: string
@@ -10,6 +11,7 @@ export interface RunStatuslineDeps {
   pingDaemon: (sock: string, timeoutMs: number) => Promise<boolean>
   sendUpdateSession: (sock: string, sid: string, payload: object) => Promise<void>
   readRuntimeInfo: (path: string) => RuntimeInfo | null
+  fetchSession: (port: number, sid: string) => Promise<SessionState | undefined>
 }
 
 export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
@@ -27,19 +29,34 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
     })
   }
 
-  const supports = deps.detect()
   const rt = deps.readRuntimeInfo(`${process.env.HOME}/.claude-cockpit/daemon.json`)
   const port = rt?.port ?? 0
-  const dashboardUrl = port ? `http://localhost:${port}/sessions/${parsed.sessionId}` : 'http://localhost'
+  let merged: SessionState | undefined
+  if (port && ping) {
+    try { merged = await deps.fetchSession(port, parsed.sessionId) }
+    catch { /* daemon race; fall back to local-only */ }
+  }
 
-  return renderMinimal({
+  const ctxPct = merged?.ctxPct ?? 0
+  const cost = merged?.cost ?? 0
+  const toolsCount = merged?.tools.length ?? 0
+  const todosDone = merged?.todos.filter((t) => t.completed).length ?? 0
+  const todosTotal = merged?.todos.length ?? 0
+
+  return renderEssential({
     sessionId: parsed.sessionId,
     cwd: parsed.cwd,
     model: parsed.model,
-    ...(parsed.branch !== undefined && { branch: parsed.branch }),
-    ctxPct: 0,
-    cost: 0,
-    dashboardUrl,
-    supportsOsc8: supports,
+    branch: parsed.branch ?? 'detached',
+    ctxPct,
+    cost,
+    toolsCount,
+    subagentCount: 0,
+    todosDone,
+    todosTotal,
+    dashboardUrl: `http://localhost:${port}/sessions/${parsed.sessionId}`,
+    stopUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/interrupt`,
+    fileUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/open-file`,
+    supportsOsc8: deps.detect(),
   })
 }
