@@ -16,9 +16,11 @@ export function formatCountdown(resetAt: number | undefined, now: number = Date.
   return remH > 0 ? `${d}d ${remH}h` : `${d}d`
 }
 
+// Quota thresholds match terminal statusline (claude-hud convention):
+// >=90 critical, >=75 warning, else info. (ctx uses 85/70 — different metric.)
 function barColor(pct: number): string {
   if (pct >= 90) return palette.crit
-  if (pct >= 70) return palette.warning
+  if (pct >= 75) return palette.warning
   return palette.info
 }
 
