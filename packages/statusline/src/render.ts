@@ -1,6 +1,6 @@
 import { basename } from 'node:path'
 import { osc8 } from './osc8.js'
-import { coloredBar, colorize, getCtxColor, getQuotaColor } from './ansi.js'
+import { coloredBar, colorize, DIM, getCtxColor, getQuotaColor } from './ansi.js'
 
 export interface RenderInput {
   sessionId: string
@@ -67,7 +67,8 @@ function renderUsageSegment(label: '5h' | '7d', pct: number | undefined, resetAt
   const bar = coloredBar(pct, 5, getQuotaColor)        // 5-cell inline mini-bar
   const pctText = colorize(`${Math.round(pct)}%`, getQuotaColor(pct))
   const cd = formatCountdown(resetAt, now)
-  return cd ? `${label} ${bar} ${pctText} (${cd})` : `${label} ${bar} ${pctText}`
+  // bar→% order matches ctx; countdown in dim parens so it reads as secondary
+  return cd ? `${label} ${bar} ${pctText} ${colorize(`(${cd})`, DIM)}` : `${label} ${bar} ${pctText}`
 }
 
 export function renderEssential(input: EssentialInput): string {
@@ -83,16 +84,16 @@ export function renderEssential(input: EssentialInput): string {
   line1Parts.push(`todos ${input.todosDone}/${input.todosTotal}`)
   const line1 = `${line1Parts.join(' · ')} · ${dash} ${stop} ${file}`
 
-  // Line 2 — usage gauges all together
-  //   ctx N% ████░░░░░░ · 5h ▓▓░░░ X% (...) · 7d ▓░░░░ Y% (...)
+  // Line 2 — usage gauges, bar→% consistent across all three; 4-space gaps for breathing room
+  //   ctx ████░░░░░░ N%    5h ▓▓░░░ X% (Hh Mm)    7d ▓░░░░ Y% (Dd Hh)
   const now = input.now ?? Date.now()
-  const ctxPctColored = colorize(`${Math.round(input.ctxPct)}%`, getCtxColor(input.ctxPct))
   const ctxBar = coloredBar(input.ctxPct, 10, getCtxColor)
+  const ctxPctColored = colorize(`${Math.round(input.ctxPct)}%`, getCtxColor(input.ctxPct))
   const seg5h = renderUsageSegment('5h', input.usage5hPct, input.usage5hResetAt, now)
   const seg7d = renderUsageSegment('7d', input.usage7dPct, input.usage7dResetAt, now)
-  const line2Parts = [`ctx ${ctxPctColored} ${ctxBar}`, seg5h, seg7d]
+  const line2Parts = [`ctx ${ctxBar} ${ctxPctColored}`, seg5h, seg7d]
     .filter((s): s is string => s !== null && s.length > 0)
-  const line2 = line2Parts.join(' · ')
+  const line2 = line2Parts.join('    ')   // 4-space separator (no dot) for chunkier segments
 
   return `${line1}\n${line2}`
 }
