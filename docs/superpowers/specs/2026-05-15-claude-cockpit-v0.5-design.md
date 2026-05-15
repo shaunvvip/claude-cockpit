@@ -163,12 +163,12 @@ export interface Rule {
 
 // platform/index.ts
 export interface PlatformActions {
-  openUrl(url: string): Promise<void>
-  notify(args: { title: string; body: string; deepLink?: string }): Promise<void>
-  openFile(path: string): Promise<void>
-  clipboardWrite(text: string): Promise<void>
-  notify(args: { title: string; body: string; deepLink?: string }): Promise<void>
-  focusTerminal(pid: number): Promise<void>
+  platform: 'darwin' | 'linux'
+  openUrl(url: string): Promise<void>            // 已存在
+  openFile(path: string): Promise<void>          // 已存在
+  clipboardWrite(text: string): Promise<void>    // 已存在
+  notify(args: { title: string; body: string; deepLink?: string }): Promise<void>  // v0.5 新增
+  focusTerminal(pid: number): Promise<void>      // v0.5 新增
 }
 ```
 
