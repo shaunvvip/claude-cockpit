@@ -25,6 +25,7 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
       model: parsed.model,
       transcriptPath: parsed.transcriptPath,
       ...(parsed.branch !== undefined && { branch: parsed.branch }),
+      ...(parsed.cost !== undefined && { cost: parsed.cost }),
       lastUpdate: Date.now(),
     })
   }
@@ -38,7 +39,10 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
   }
 
   const ctxPct = merged?.ctxPct ?? 0
-  const cost = merged?.cost ?? 0
+  // Prefer the cost we just parsed from Claude Code's stdin — it's the freshest
+  // and doesn't depend on the daemon round-trip. Fall back to merged (which the
+  // daemon got from a previous statusline push) when not in stdin.
+  const cost = parsed.cost ?? merged?.cost ?? 0
   const toolsCount = merged?.tools.length ?? 0
   const todosDone = merged?.todos.filter((t) => t.completed).length ?? 0
   const todosTotal = merged?.todos.length ?? 0

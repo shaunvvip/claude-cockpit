@@ -4,6 +4,7 @@ export interface StatuslineInput {
   model: string
   transcriptPath: string
   branch?: string
+  cost?: number
 }
 
 export function parseStatuslineInput(raw: string): StatuslineInput | null {
@@ -31,5 +32,16 @@ export function parseStatuslineInput(raw: string): StatuslineInput | null {
     if (typeof b === 'string') branch = b
   }
 
-  return { sessionId, cwd, model, transcriptPath, ...(branch !== undefined && { branch }) }
+  // Claude Code stdin includes cost.total_cost_usd (Bug C: previously ignored)
+  let cost: number | undefined
+  if (v.cost && typeof v.cost === 'object') {
+    const c = (v.cost as Record<string, unknown>).total_cost_usd
+    if (typeof c === 'number' && Number.isFinite(c)) cost = c
+  }
+
+  return {
+    sessionId, cwd, model, transcriptPath,
+    ...(branch !== undefined && { branch }),
+    ...(cost !== undefined && { cost }),
+  }
 }

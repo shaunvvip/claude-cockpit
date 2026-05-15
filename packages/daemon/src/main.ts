@@ -92,12 +92,23 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
         } else if (e.type === 'USAGE') {
           const cur = registry.get(sessionId)
           if (!cur) return
-          const ctxPct = computeCtxPct({ model: cur.model, inputTokens: e.inputTokens })
+          // Total tokens in context = new input + cached reads + cache creation.
+          // input_tokens alone is just the prompt delta (~tens of tokens) and
+          // would always render as 0% (Bug B).
+          const totalInContext = e.inputTokens + e.cacheReadTokens + e.cacheCreationTokens
+          const ctxPct = computeCtxPct({ model: cur.model, inputTokens: totalInContext })
           const next = registry.upsert(sessionId, {
             ctxPct,
             inputTokens: e.inputTokens,
             outputTokens: e.outputTokens,
             cacheReadTokens: e.cacheReadTokens,
+            cacheCreationTokens: e.cacheCreationTokens,
+            lastUpdate: e.ts,
+          })
+          broadcaster.publishUpsert(next)
+        } else if (e.type === 'TODOS') {
+          const next = registry.upsert(sessionId, {
+            todos: e.items,
             lastUpdate: e.ts,
           })
           broadcaster.publishUpsert(next)

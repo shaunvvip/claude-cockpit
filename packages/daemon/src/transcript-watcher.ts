@@ -5,7 +5,7 @@ import type { FileHandle } from 'node:fs/promises'
 
 export type TranscriptEvent =
   | { type: 'TOOL_USE'; name: string; ts: number }
-  | { type: 'USAGE'; inputTokens: number; outputTokens: number; cacheReadTokens: number; ts: number }
+  | { type: 'USAGE'; inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheCreationTokens: number; ts: number }
   | { type: 'TODOS'; items: { text: string; completed: boolean }[]; ts: number }
   | { type: 'FILE_EDIT'; path: string; tool: 'Edit' | 'Write' | 'Read'; ts: number }
 
@@ -24,9 +24,12 @@ export class TranscriptWatcher {
 
   async start(): Promise<void> {
     this.fh = await open(this.path, 'r')
-    const stat = await this.fh.stat()
-    this.offset = stat.size
+    // Start at byte 0 — drain() will parse all existing content, then watch for
+    // future appends. Previously this started at EOF which caused tools/ctx/etc.
+    // to stay at 0 for any session whose transcript existed before daemon spawn.
+    this.offset = 0
     this.fsw = watch(this.path, () => { void this.drain() })
+    await this.drain()
   }
 
   async drain(): Promise<void> {
@@ -73,6 +76,25 @@ export class TranscriptWatcher {
                 })
               }
             }
+
+            // TODOS extraction from TodoWrite tool_use input
+            if (i.name === 'TodoWrite') {
+              const input = i.input as Record<string, unknown> | undefined
+              const todos = input?.todos
+              if (Array.isArray(todos)) {
+                const items: { text: string; completed: boolean }[] = []
+                for (const t of todos) {
+                  if (t && typeof t === 'object') {
+                    const tt = t as Record<string, unknown>
+                    // Claude Code TodoWrite shape: { content: string, status: 'pending'|'in_progress'|'completed', activeForm: string }
+                    const text = typeof tt.content === 'string' ? tt.content : (typeof tt.text === 'string' ? tt.text : '')
+                    const completed = tt.status === 'completed' || tt.completed === true
+                    if (text) items.push({ text, completed })
+                  }
+                }
+                this.listener({ type: 'TODOS', items, ts })
+              }
+            }
           }
         }
       }
@@ -86,6 +108,7 @@ export class TranscriptWatcher {
         inputTokens: Number(usage.input_tokens) || 0,
         outputTokens: Number(usage.output_tokens) || 0,
         cacheReadTokens: Number(usage.cache_read_input_tokens) || 0,
+        cacheCreationTokens: Number(usage.cache_creation_input_tokens) || 0,
         ts,
       })
     }

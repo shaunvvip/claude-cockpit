@@ -33,6 +33,7 @@ export interface SessionState {
   ctxPct: number           // 0–100
   cost: number             // USD
   cacheReadTokens?: number
+  cacheCreationTokens?: number
   inputTokens?: number
   outputTokens?: number
   tools: ToolCall[]        // most-recent first, capped at 50
