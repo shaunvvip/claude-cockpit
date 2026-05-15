@@ -46,7 +46,7 @@ v0.5 的核心目标：**把 cockpit 从"只读看板"变成"能动手 + 会提�
 **目标**：`ctx-high` 一条规则从触发到点击通知跳详情页，链路打通。
 
 - 后端：新建 `packages/daemon/src/rules/`，骨架 `RuleEngine` + 规则 `ctx-high`（10s tick / 去重表）
-- 后端：`platform/darwin.ts` + `platform/linux.ts` 实现 `notify({ title, body, deepLink })`（`osascript` / `notify-send`）
+- 后端：`platform/macos.ts` + `platform/linux.ts` 增加 `notify({ title, body, deepLink })` 实现（`osascript` / `notify-send`）
 - 后端：deep-link `http://localhost:PORT/sessions/<id>?alert=ctx-high`
 - 前端：新增 TanStack Router 路由 `/sessions/:id`，仅 Header + 占位面板；从 query string 读 `alert` 显示 `AlertBanner`
 - 测试：RuleEngine 单测（mock registry / clock）；平台 notify 单测（mock command exec）；e2e 跑通
@@ -71,9 +71,9 @@ v0.5 的核心目标：**把 cockpit 从"只读看板"变成"能动手 + 会提�
 - 后端：完善 `api/routes.ts`
   - `POST /api/sessions/:id/interrupt` → 先 `readlink /proc/<ppid>/exe`（Linux）/ `ps -p <ppid> -o comm=`（mac）验证命令名含 `claude` → `kill -SIGINT ppid`；不匹配返回 `422 stop-unavailable`
   - `POST /api/sessions/:id/open-file` → 用 `lastEditPath` → `platform.openFile(path)`
-  - `POST /api/sessions/:id/copy-info` body=`{ field: 'sessionId'|'cost'|'transcriptPath'|'cwd' }` → `platform.clipboard.write(...)`
+  - `POST /api/sessions/:id/copy-info` body=`{ field: 'sessionId'|'cost'|'transcriptPath'|'cwd' }` → `platform.clipboardWrite(...)`
   - `POST /api/sessions/:id/focus-terminal` → `platform.focusTerminal(ppid)`
-- 后端：`platform/darwin.ts` `platform/linux.ts` 补完 `openFile / clipboard.write / focusTerminal`
+- 后端：`platform/macos.ts` `platform/linux.ts` 增加 `focusTerminal` 实现（其他动作已就位）
 - 前端：`SessionCard` 控制按钮区接 4 个 fetch POST；URL deep-link 直达
 - statusline：OSC 8 链接走 `GET /api/sessions/:id/interrupt-redirect` —— daemon GET 端点内部转 POST 后 302 回 dashboard，避免要求终端注册自定义 scheme
 - 测试：routes 单测（happy / 404 / 422）+ 平台抽象单测（mock exec）
@@ -166,7 +166,8 @@ export interface PlatformActions {
   openUrl(url: string): Promise<void>
   notify(args: { title: string; body: string; deepLink?: string }): Promise<void>
   openFile(path: string): Promise<void>
-  clipboard: { write(text: string): Promise<void> }
+  clipboardWrite(text: string): Promise<void>
+  notify(args: { title: string; body: string; deepLink?: string }): Promise<void>
   focusTerminal(pid: number): Promise<void>
 }
 ```
@@ -284,7 +285,7 @@ OSC 8 协议要求 URL，浏览器以 GET 打开。但 `[stop]` 需要的是 POS
 | 层级 | 范围 | 工具 | 用例数 |
 |---|---|---|---|
 | 单测 | 4 条规则各 3-5 例（命中 / 不命中 / 去重 / 边界） | vitest | ≈ 16 |
-| 单测 | `platform/darwin` `platform/linux` mock exec（断言命令拼装） | vitest + mock `node:child_process` | ≈ 8 |
+| 单测 | `platform/macos` `platform/linux` mock exec（断言 `notify` / `focusTerminal` 命令拼装） | vitest + mock `node:child_process` | ≈ 8 |
 | 单测 | `TranscriptWatcher` FILE_EDIT 提取（Edit / Write / Read 三 tool） | vitest | ≈ 3 |
 | 单测 | `routes.ts` 4 个新 POST + 4 个 GET（重定向 + events + recent-alerts，happy / 404 / 422 / origin 拒绝） | vitest | ≈ 24 |
 | 单测 | dashboard 组件 `CtxChart` `ToolBarChart` `EventTimeline` `AlertBanner` 各渲染 + 数据更新 | vitest + RTL | ≈ 8 |
