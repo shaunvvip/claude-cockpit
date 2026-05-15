@@ -5,6 +5,8 @@ import { writeRuntimeInfo, deleteRuntimeInfo } from './runtime-info.js'
 import { IdleChecker } from './lifecycle.js'
 import { SessionRegistry } from './session-registry.js'
 import { WsBroadcaster } from './api/ws.js'
+import { TranscriptWatcher } from './transcript-watcher.js'
+import { computeCtxPct } from './ctx-calc.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -34,6 +36,8 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
   const registry = new SessionRegistry()
   const broadcaster = new WsBroadcaster()
 
+  const watchers = new Map<string, TranscriptWatcher>()
+
   const dist = findDashboardDist()
   const http = await startHttpServer({
     port: opts.port ?? 0,
@@ -41,14 +45,53 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     broadcaster,
     ...(dist !== undefined && { staticDir: dist }),
   })
-  const sock = await startSocketServer(getSocketPath(), (frame) => {
-    if (frame.type === 'UPDATE_SESSION') {
-      const updated = registry.upsert(frame.sessionId, {
-        ...frame.payload,
-        lastUpdate: Date.now(),
-      })
-      broadcaster.publishUpsert(updated)
+  const sock = await startSocketServer(getSocketPath(), async (frame) => {
+    if (frame.type !== 'UPDATE_SESSION') {
+      opts.onFrame?.(frame)
+      return
     }
+
+    const updated = registry.upsert(frame.sessionId, {
+      ...frame.payload,
+      lastUpdate: Date.now(),
+    })
+    broadcaster.publishUpsert(updated)
+
+    // Lazy-start a watcher for this session's transcript on first sight
+    if (updated.transcriptPath && !watchers.has(frame.sessionId)) {
+      const sessionId = frame.sessionId
+      const w = new TranscriptWatcher(updated.transcriptPath, (e) => {
+        if (e.type === 'TOOL_USE') {
+          const cur = registry.get(sessionId)
+          if (!cur) return
+          const newTools = [
+            { ts: e.ts, name: e.name, status: 'ok' as const },
+            ...cur.tools,
+          ].slice(0, 50)
+          const next = registry.upsert(sessionId, { tools: newTools, lastUpdate: e.ts })
+          broadcaster.publishUpsert(next)
+        } else if (e.type === 'USAGE') {
+          const cur = registry.get(sessionId)
+          if (!cur) return
+          const ctxPct = computeCtxPct({ model: cur.model, inputTokens: e.inputTokens })
+          const next = registry.upsert(sessionId, {
+            ctxPct,
+            inputTokens: e.inputTokens,
+            outputTokens: e.outputTokens,
+            cacheReadTokens: e.cacheReadTokens,
+            lastUpdate: e.ts,
+          })
+          broadcaster.publishUpsert(next)
+        }
+      })
+      try {
+        await w.start()
+        watchers.set(sessionId, w)
+      } catch {
+        // transcript file may not exist yet; will retry on next UPDATE_SESSION
+      }
+    }
+
     opts.onFrame?.(frame)
   })
 
@@ -64,6 +107,10 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     if (shutdownInvoked) return
     shutdownInvoked = true
     clearInterval(idleTimer)
+    for (const w of watchers.values()) {
+      try { await w.stop() } catch { /* */ }
+    }
+    watchers.clear()
     await sock.stop()
     await http.stop()
     deleteRuntimeInfo(getRuntimeInfoPath())
