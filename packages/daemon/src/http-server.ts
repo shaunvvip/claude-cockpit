@@ -5,6 +5,7 @@ import { join, extname, normalize } from 'node:path'
 import type { SessionRegistry } from './session-registry.js'
 import { handleApiRequest } from './api/routes.js'
 import { WsBroadcaster } from './api/ws.js'
+import type { PlatformActions } from './platform/index.js'
 
 export interface HttpServer {
   port: number
@@ -17,6 +18,7 @@ export interface HttpServerOptions {
   staticDir?: string
   registry?: SessionRegistry
   broadcaster?: WsBroadcaster
+  platform?: PlatformActions
 }
 
 const MIME: Record<string, string> = {
@@ -51,15 +53,20 @@ function serveStatic(staticDir: string, url: string, res: ServerResponse): boole
 
 export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServer> {
   const sockets = new Set<WebSocket>()
+  let boundPort = 0  // set after listen()
 
-  const http: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
+  const http: Server = createServer(async (req: IncomingMessage, res: ServerResponse) => {
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
       return
     }
-    if (req.method && req.url && opts.registry) {
-      const apiRes = handleApiRequest(req.method, req.url, opts.registry)
+    if (req.method && req.url && opts.registry && opts.platform) {
+      const apiRes = await handleApiRequest(req.method, req.url, {
+        registry: opts.registry,
+        platform: opts.platform,
+        port: boundPort,
+      })
       if (apiRes) {
         res.writeHead(apiRes.status, { 'Content-Type': apiRes.contentType })
         res.end(apiRes.body)
@@ -99,8 +106,12 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
     http.once('error', reject)
     http.listen(opts.port, '127.0.0.1', () => {
       const addr = http.address()
-      if (addr && typeof addr === 'object') resolve(addr.port)
-      else reject(new Error('no address'))
+      if (addr && typeof addr === 'object') {
+        boundPort = addr.port
+        resolve(addr.port)
+      } else {
+        reject(new Error('no address'))
+      }
     })
   })
 

@@ -8,6 +8,7 @@ import { WsBroadcaster } from './api/ws.js'
 import { TranscriptWatcher } from './transcript-watcher.js'
 import { computeCtxPct } from './ctx-calc.js'
 import { parseMcpConfig, getDefaultSettingsPath } from './mcp-inspector.js'
+import { getPlatformActions } from './platform/index.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -40,11 +41,13 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
 
   const watchers = new Map<string, TranscriptWatcher>()
 
+  const platform = getPlatformActions()
   const dist = findDashboardDist()
   const http = await startHttpServer({
     port: opts.port ?? 0,
     registry,
     broadcaster,
+    platform,
     ...(dist !== undefined && { staticDir: dist }),
   })
   const sock = await startSocketServer(getSocketPath(), async (frame) => {
