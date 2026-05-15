@@ -4,6 +4,7 @@ import { readFileSync, existsSync, statSync } from 'node:fs'
 import { join, extname, normalize } from 'node:path'
 import type { SessionRegistry } from './session-registry.js'
 import { handleApiRequest } from './api/routes.js'
+import { WsBroadcaster } from './api/ws.js'
 
 export interface HttpServer {
   port: number
@@ -15,6 +16,7 @@ export interface HttpServerOptions {
   port: number
   staticDir?: string
   registry?: SessionRegistry
+  broadcaster?: WsBroadcaster
 }
 
 const MIME: Record<string, string> = {
@@ -77,7 +79,16 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
     if (req.url === '/ws') {
       wss.handleUpgrade(req, socket, head, (ws) => {
         sockets.add(ws)
-        ws.on('close', () => sockets.delete(ws))
+        let unsub: (() => void) | undefined
+        if (opts.broadcaster) {
+          unsub = opts.broadcaster.subscribe((event) => {
+            if (ws.readyState === ws.OPEN) ws.send(JSON.stringify(event))
+          })
+        }
+        ws.on('close', () => {
+          sockets.delete(ws)
+          unsub?.()
+        })
       })
     } else {
       socket.destroy()

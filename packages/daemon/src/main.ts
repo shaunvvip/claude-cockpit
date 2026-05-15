@@ -4,6 +4,7 @@ import { getSocketPath, getRuntimeInfoPath, getCockpitDir } from './paths.js'
 import { writeRuntimeInfo, deleteRuntimeInfo } from './runtime-info.js'
 import { IdleChecker } from './lifecycle.js'
 import { SessionRegistry } from './session-registry.js'
+import { WsBroadcaster } from './api/ws.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -31,19 +32,22 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
   mkdirSync(getCockpitDir(), { recursive: true })
 
   const registry = new SessionRegistry()
+  const broadcaster = new WsBroadcaster()
 
   const dist = findDashboardDist()
   const http = await startHttpServer({
     port: opts.port ?? 0,
     registry,
+    broadcaster,
     ...(dist !== undefined && { staticDir: dist }),
   })
   const sock = await startSocketServer(getSocketPath(), (frame) => {
     if (frame.type === 'UPDATE_SESSION') {
-      registry.upsert(frame.sessionId, {
+      const updated = registry.upsert(frame.sessionId, {
         ...frame.payload,
         lastUpdate: Date.now(),
       })
+      broadcaster.publishUpsert(updated)
     }
     opts.onFrame?.(frame)
   })
@@ -67,7 +71,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
 
   const idleChecker = new IdleChecker({
     idleMs: opts.idleMs ?? 30 * 60_000,
-    hasActiveBrowsers: () => false,         // wired up in Task 17 (WS broadcaster)
+    hasActiveBrowsers: () => broadcaster.hasActive(),
     lastSessionUpdate: () => registry.lastSessionUpdate(),
     now: () => Date.now(),
     onIdle: () => { void shutdown() },
