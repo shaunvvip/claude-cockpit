@@ -1,0 +1,15 @@
+{
+  "name": "@claude-cockpit/statusline",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "bin": { "claude-cockpit-statusline": "./bin/statusline.ts" },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@claude-cockpit/shared": "*"
+  }
+}
