@@ -43,4 +43,6 @@ export interface SessionState {
   lastUpdate: number       // ms epoch
   startedAt: number
   branch?: string
+  lastEditPath?: string
+  lastEditTs?: number
 }

@@ -35,4 +35,14 @@ describe('SessionState shape', () => {
     }
     expect(s.sessionId).toBe('abc')
   })
+
+  it('accepts optional lastEditPath / lastEditTs', () => {
+    const s: SessionState = {
+      sessionId: 'sid', pid: 1, ppid: 1, cwd: '/x', model: 'm', ctxPct: 0,
+      cost: 0, tools: [], todos: [], mcpServers: [], transcriptPath: '', status: 'busy',
+      lastUpdate: 0, startedAt: 0,
+      lastEditPath: '/x/y.ts', lastEditTs: 123,
+    }
+    expect(s.lastEditPath).toBe('/x/y.ts')
+  })
 })

@@ -91,6 +91,14 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
           })
           broadcaster.publishUpsert(next)
         }
+        if (e.type === 'FILE_EDIT') {
+          const next = registry.upsert(sessionId, {
+            lastEditPath: e.path,
+            lastEditTs: e.ts,
+            lastUpdate: Date.now(),
+          })
+          broadcaster.publishUpsert(next)
+        }
       })
       try {
         await w.start()
