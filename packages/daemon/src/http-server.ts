@@ -1,5 +1,7 @@
 import { createServer, IncomingMessage, ServerResponse, Server } from 'node:http'
 import { WebSocketServer, type WebSocket } from 'ws'
+import { readFileSync, existsSync, statSync } from 'node:fs'
+import { join, extname, normalize } from 'node:path'
 
 export interface HttpServer {
   port: number
@@ -9,6 +11,37 @@ export interface HttpServer {
 
 export interface HttpServerOptions {
   port: number
+  staticDir?: string
+}
+
+const MIME: Record<string, string> = {
+  '.html': 'text/html',
+  '.js':   'application/javascript',
+  '.mjs':  'application/javascript',
+  '.css':  'text/css',
+  '.json': 'application/json',
+  '.svg':  'image/svg+xml',
+  '.png':  'image/png',
+  '.ico':  'image/x-icon',
+  '.woff2':'font/woff2',
+}
+
+function serveStatic(staticDir: string, url: string, res: ServerResponse): boolean {
+  const normRoot = normalize(staticDir)
+  let path = normalize(join(staticDir, url === '/' ? '/index.html' : url))
+  // Path traversal guard
+  if (!path.startsWith(normRoot)) {
+    res.writeHead(403); res.end(); return true
+  }
+  if (!existsSync(path) || !statSync(path).isFile()) {
+    // SPA fallback to index.html
+    path = join(staticDir, 'index.html')
+    if (!existsSync(path)) return false
+  }
+  const ext = extname(path).toLowerCase()
+  res.writeHead(200, { 'Content-Type': MIME[ext] ?? 'application/octet-stream' })
+  res.end(readFileSync(path))
+  return true
 }
 
 export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServer> {
@@ -18,6 +51,9 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
     if (req.method === 'GET' && req.url === '/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ ok: true }))
+      return
+    }
+    if (req.method === 'GET' && opts.staticDir && serveStatic(opts.staticDir, req.url ?? '/', res)) {
       return
     }
     res.writeHead(404)

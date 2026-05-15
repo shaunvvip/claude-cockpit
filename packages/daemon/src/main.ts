@@ -4,8 +4,22 @@ import { getSocketPath, getRuntimeInfoPath, getCockpitDir } from './paths.js'
 import { writeRuntimeInfo, deleteRuntimeInfo } from './runtime-info.js'
 import { IdleChecker } from './lifecycle.js'
 import { SessionRegistry } from './session-registry.js'
-import { mkdirSync } from 'node:fs'
+import { mkdirSync, existsSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import type { RpcFrame } from '@claude-cockpit/shared'
+
+function findDashboardDist(): string | undefined {
+  // src/main.ts is at packages/daemon/src/main.ts when running via tsx (no compilation)
+  // It would be at packages/daemon/dist/main.js if compiled — handle both
+  const here = dirname(fileURLToPath(import.meta.url))
+  const candidates = [
+    join(here, '../../dashboard/dist'),     // packages/daemon/src/  → packages/dashboard/dist
+    join(here, '../../../dashboard/dist'),  // packages/daemon/dist/ → packages/dashboard/dist
+  ]
+  for (const c of candidates) if (existsSync(c)) return c
+  return undefined
+}
 
 export interface MainOptions {
   port?: number
@@ -18,7 +32,11 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
 
   const registry = new SessionRegistry()
 
-  const http = await startHttpServer({ port: opts.port ?? 0 })
+  const dashboardDist = findDashboardDist()
+  const http = await startHttpServer({
+    port: opts.port ?? 0,
+    ...(dashboardDist !== undefined ? { staticDir: dashboardDist } : {}),
+  })
   const sock = await startSocketServer(getSocketPath(), (frame) => {
     if (frame.type === 'UPDATE_SESSION') {
       registry.upsert(frame.sessionId, {
