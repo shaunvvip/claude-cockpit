@@ -12,6 +12,7 @@ import { getPlatformActions } from './platform/index.js'
 import { RuleEngine } from './rules/engine.js'
 import { ctxHighRule } from './rules/ctx-high.js'
 import { costSpikeRule } from './rules/cost-spike.js'
+import { loopDetectRule } from './rules/loop-detect.js'
 import { EventBuffer } from './event-buffer.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -123,7 +124,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
   const eventBuffer = new EventBuffer()
 
   const ruleEngine = new RuleEngine({
-    rules: [ctxHighRule, costSpikeRule],
+    rules: [ctxHighRule, costSpikeRule, loopDetectRule],
     getRecentEvents: (sid) => eventBuffer.recent(sid, Date.now(), 30 * 60 * 1000),
   })
 
