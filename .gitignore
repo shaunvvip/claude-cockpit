@@ -7,3 +7,4 @@ dist/
 # Note: ~/.claude-cockpit/ is created at runtime by the daemon; never inside this repo.
 .vite/
 coverage/
+*.swp
