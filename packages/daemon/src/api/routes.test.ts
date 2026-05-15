@@ -1,7 +1,16 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { handleApiRequest } from './routes.js'
 import { SessionRegistry } from '../session-registry.js'
 import type { PlatformActions } from '../platform/index.js'
+
+vi.mock('node:child_process', () => ({
+  execFile: (_cmd: string, _args: string[], cb: (e: unknown, r: { stdout: string }) => void) => {
+    cb(null, { stdout: 'claude\n' })
+  },
+}))
+vi.mock('node:fs/promises', async () => ({
+  readlink: vi.fn(async () => '/usr/local/bin/claude'),
+}))
 
 function makeCtx(registry = new SessionRegistry()) {
   const platform: PlatformActions = {
@@ -72,5 +81,30 @@ describe('handleApiRequest', () => {
     const res = await handleApiRequest('POST', '/api/sessions/x/open-dashboard', ctx)
     expect(res?.status).toBe(200)
     expect(calls[0]).toBe('http://localhost:5050/sessions/x')
+  })
+})
+
+describe('POST /interrupt', () => {
+  it('returns 404 when session missing', async () => {
+    const ctx = makeCtx()
+    const res = await handleApiRequest('POST', '/api/sessions/x/interrupt', ctx)
+    expect(res?.status).toBe(404)
+  })
+
+  it('returns 422 when session has no ppid', async () => {
+    const ctx = makeCtx()
+    ctx.registry.upsert('sid', { lastUpdate: 0, ppid: 0 })
+    const res = await handleApiRequest('POST', '/api/sessions/sid/interrupt', ctx)
+    expect(res?.status).toBe(422)
+  })
+
+  it('sends SIGINT and returns 200 when ppid looks like claude', async () => {
+    const ctx = makeCtx()
+    ctx.registry.upsert('sid', { lastUpdate: 0, ppid: 99999 })
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true)
+    const res = await handleApiRequest('POST', '/api/sessions/sid/interrupt', ctx)
+    expect(res?.status).toBe(200)
+    expect(killSpy).toHaveBeenCalledWith(99999, 'SIGINT')
+    killSpy.mockRestore()
   })
 })
