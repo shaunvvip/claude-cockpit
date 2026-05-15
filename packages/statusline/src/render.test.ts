@@ -14,6 +14,7 @@ describe('renderMinimal', () => {
     expect(out).toContain('47%')
     expect(out).toContain('$0.42')
     expect(out).toContain('[cockpit]')
+    expect(out).toContain('\x1b[32m')  // green ctx color (47% < 70 threshold)
   })
 
   it('emits OSC 8 escape sequences when supported', () => {
@@ -39,7 +40,8 @@ describe('renderEssential', () => {
     const lines = out.split('\n')
     expect(lines).toHaveLength(2)
     expect(lines[0]).toContain('50%')
-    expect(lines[0]).toContain('[█████░░░░░]')
+    expect(lines[0]).toContain('█████')   // 5 of 10 cells filled
+    expect(lines[0]).toContain('░░░░░')   // 5 empty
     expect(lines[1]).toContain('7')
     expect(lines[1]).toContain('2/5')
     expect(lines[1]).toContain('[dash]')
@@ -54,8 +56,38 @@ describe('renderEssential', () => {
       dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
       supportsOsc8: false,
     } as const
-    expect(renderEssential({ ...base, ctxPct: 0 })).toContain('[░░░░░░░░░░]')
-    expect(renderEssential({ ...base, ctxPct: 100 })).toContain('[██████████]')
+    expect(renderEssential({ ...base, ctxPct: 0 })).toContain('░░░░░░░░░░')
+    expect(renderEssential({ ...base, ctxPct: 100 })).toContain('██████████')
+  })
+
+  it('ctx bar uses RED ANSI at >=85% and GREEN at low', () => {
+    const base = {
+      sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
+      cost: 0, toolsCount: 0, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
+      supportsOsc8: false,
+    } as const
+    expect(renderEssential({ ...base, ctxPct: 90 })).toContain('\x1b[31m')  // red
+    expect(renderEssential({ ...base, ctxPct: 20 })).toContain('\x1b[32m')  // green
+    expect(renderEssential({ ...base, ctxPct: 75 })).toContain('\x1b[33m')  // yellow
+  })
+
+  it('usage segments include mini bar with quota colors', () => {
+    const now = 1_000_000_000
+    const out = renderEssential({
+      sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
+      ctxPct: 30, cost: 0, toolsCount: 1, subagentCount: 0, todosDone: 0, todosTotal: 0,
+      dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
+      supportsOsc8: false,
+      usage5hPct: 92, usage5hResetAt: now + 60_000,
+      usage7dPct: 30, usage7dResetAt: now + 60_000,
+      now,
+    })
+    const line2 = out.split('\n')[1]!
+    expect(line2).toContain('5h ')
+    expect(line2).toContain('7d ')
+    expect(line2).toContain('\x1b[31m')   // 92% triggers RED for 5h
+    expect(line2).toContain('\x1b[94m')   // 30% triggers BRIGHT_BLUE for 7d
   })
 
   it('renders 5h + 7d usage segments with countdown when present', () => {
@@ -72,10 +104,12 @@ describe('renderEssential', () => {
       now,
     })
     const line2 = out.split('\n')[1]!
-    expect(line2).toContain('5h 25%')
-    expect(line2).toContain('2h 30m')
-    expect(line2).toContain('7d 12%')
-    expect(line2).toContain('5d 12h')
+    expect(line2).toContain('5h ')
+    expect(line2).toContain('25%')
+    expect(line2).toContain('(2h 30m)')
+    expect(line2).toContain('7d ')
+    expect(line2).toContain('12%')
+    expect(line2).toContain('(5d 12h)')
   })
 
   it('omits usage segments when absent (degrades gracefully)', () => {

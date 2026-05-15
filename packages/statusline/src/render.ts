@@ -1,5 +1,6 @@
 import { basename } from 'node:path'
 import { osc8 } from './osc8.js'
+import { coloredBar, colorize, getCtxColor, getQuotaColor } from './ansi.js'
 
 export interface RenderInput {
   sessionId: string
@@ -15,10 +16,10 @@ export interface RenderInput {
 export function renderMinimal(input: RenderInput): string {
   const cwdShort = basename(input.cwd) || input.cwd
   const branch = input.branch ?? 'detached'
-  const ctx = `${Math.round(input.ctxPct)}%`
+  const ctxColored = colorize(`${Math.round(input.ctxPct)}%`, getCtxColor(input.ctxPct))
   const cost = `$${input.cost.toFixed(2)}`
   const link = osc8(input.dashboardUrl, '[cockpit]', input.supportsOsc8)
-  return `● ${input.model} · ${cwdShort} · ${branch} · ctx ${ctx} · ${cost} · ${link}`
+  return `● ${input.model} · ${cwdShort} · ${branch} · ctx ${ctxColored} · ${cost} · ${link}`
 }
 
 export interface EssentialInput extends RenderInput {
@@ -35,6 +36,8 @@ export interface EssentialInput extends RenderInput {
   now?: number   // injectable for tests
 }
 
+// Plain monochrome bar — kept for backwards compatibility / tests that match
+// substrings like "[████░░░░░░]". Prefer coloredBar() from ansi.ts for live output.
 function progressBar(pct: number, width = 10): string {
   const filled = Math.round((Math.max(0, Math.min(100, pct)) / 100) * width)
   return `[${'█'.repeat(filled)}${'░'.repeat(width - filled)}]`
@@ -61,13 +64,18 @@ export function formatCountdown(resetAt: number | undefined, now: number): strin
 
 function renderUsageSegment(label: '5h' | '7d', pct: number | undefined, resetAt: number | undefined, now: number): string | null {
   if (pct === undefined) return null
+  const bar = coloredBar(pct, 5, getQuotaColor)        // 5-cell inline mini-bar
+  const pctText = colorize(`${Math.round(pct)}%`, getQuotaColor(pct))
   const cd = formatCountdown(resetAt, now)
-  return cd ? `${label} ${Math.round(pct)}% (${cd})` : `${label} ${Math.round(pct)}%`
+  return cd ? `${label} ${bar} ${pctText} (${cd})` : `${label} ${bar} ${pctText}`
 }
 
 export function renderEssential(input: EssentialInput): string {
   const line1Base = renderMinimal(input).replace(/ · \S*\[cockpit\]\S*$/, '').replace(/ · \[cockpit\]$/, '')
-  const line1 = `${line1Base} ${progressBar(input.ctxPct)}`
+  // Replace the plain progressBar with a colored 10-cell ctx bar (no brackets,
+  // ANSI colors carry the visual weight).
+  const ctxBar = coloredBar(input.ctxPct, 10, getCtxColor)
+  const line1 = `${line1Base} ${ctxBar}`
   const dash = osc8(input.dashboardUrl, '[dash]', input.supportsOsc8)
   const stop = osc8(input.stopUrl,      '[stop]', input.supportsOsc8)
   const file = osc8(input.fileUrl,      '[file]', input.supportsOsc8)
