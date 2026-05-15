@@ -6,6 +6,8 @@ import type { SessionRegistry } from './session-registry.js'
 import { handleApiRequest } from './api/routes.js'
 import { WsBroadcaster } from './api/ws.js'
 import type { PlatformActions } from './platform/index.js'
+import type { AlertStore } from './alert-store.js'
+import type { EventBuffer } from './event-buffer.js'
 
 export interface HttpServer {
   port: number
@@ -19,6 +21,8 @@ export interface HttpServerOptions {
   registry?: SessionRegistry
   broadcaster?: WsBroadcaster
   platform?: PlatformActions
+  alertStore?: AlertStore
+  eventBuffer?: EventBuffer
 }
 
 const MIME: Record<string, string> = {
@@ -67,6 +71,8 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
         platform: opts.platform,
         port: boundPort,
         request: req,
+        ...(opts.alertStore !== undefined && { alerts: opts.alertStore }),
+        ...(opts.eventBuffer !== undefined && { events: opts.eventBuffer }),
       })
       if (apiRes) {
         res.writeHead(apiRes.status, {

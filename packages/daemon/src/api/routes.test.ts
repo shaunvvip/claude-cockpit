@@ -249,6 +249,36 @@ describe('GET /open-file-redirect', () => {
   })
 })
 
+describe('GET /recent-alerts', () => {
+  it('returns alerts filtered by session', async () => {
+    const { AlertStore } = await import('../alert-store.js')
+    const alerts = new AlertStore()
+    alerts.push({ ruleId: 'ctx-high', sessionId: 'sid', ts: 1, title: 't', body: 'b' })
+    alerts.push({ ruleId: 'ctx-high', sessionId: 'other', ts: 2, title: '', body: '' })
+    const registry = new SessionRegistry()
+    const platform = { platform: 'darwin' as const } as any
+    const res = await handleApiRequest('GET', '/api/sessions/sid/recent-alerts', { registry, platform, port: 1234, alerts })
+    expect(res?.status).toBe(200)
+    const payload = JSON.parse(res!.body) as { alerts: any[] }
+    expect(payload.alerts).toHaveLength(1)
+  })
+})
+
+describe('GET /events', () => {
+  it('returns events filtered by since', async () => {
+    const { EventBuffer } = await import('../event-buffer.js')
+    const events = new EventBuffer()
+    events.push('sid', { type: 'TOOL_USE', name: 'A', ts: 100 })
+    events.push('sid', { type: 'TOOL_USE', name: 'B', ts: 200 })
+    const registry = new SessionRegistry()
+    const platform = { platform: 'darwin' as const } as any
+    const res = await handleApiRequest('GET', '/api/sessions/sid/events?since=150', { registry, platform, port: 1234, events })
+    const payload = JSON.parse(res!.body) as { events: any[] }
+    expect(payload.events).toHaveLength(1)
+    expect(payload.events[0].name).toBe('B')
+  })
+})
+
 describe('POST /focus-terminal', () => {
   it('returns 404 when session missing', async () => {
     const focusTerminal = vi.fn(async () => undefined)

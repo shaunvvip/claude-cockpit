@@ -4,6 +4,8 @@ import { readlink as _readlink } from 'node:fs/promises'
 import type { IncomingMessage } from 'node:http'
 import type { SessionRegistry } from '../session-registry.js'
 import type { PlatformActions } from '../platform/index.js'
+import type { EventBuffer } from '../event-buffer.js'
+import type { AlertStore } from '../alert-store.js'
 
 const execFile = promisify(_execFile)
 
@@ -33,6 +35,8 @@ export interface ApiContext {
   platform: PlatformActions
   port: number
   request?: IncomingMessage    // optional for backward-compat with existing tests
+  alerts?: AlertStore
+  events?: EventBuffer
 }
 
 function checkOriginOk(req: IncomingMessage | undefined, port: number): boolean {
@@ -153,6 +157,22 @@ export async function handleApiRequest(
       await ctx.platform.openFile(s.lastEditPath).catch(() => undefined)
     }
     return { status: 302, body: '', contentType: 'text/plain', headers: { Location: `/sessions/${sid}` } }
+  }
+
+  const recentAlerts = url.match(/^\/api\/sessions\/([^/]+)\/recent-alerts$/)
+  if (method === 'GET' && recentAlerts) {
+    if (!ctx.alerts) return json(200, { alerts: [] })
+    return json(200, { alerts: ctx.alerts.bySession(recentAlerts[1]!) })
+  }
+
+  const eventsMatch = url.match(/^\/api\/sessions\/([^/]+)\/events(\?.*)?$/)
+  if (method === 'GET' && eventsMatch) {
+    if (!ctx.events) return json(200, { events: [] })
+    const sinceMatch = url.match(/[?&]since=(\d+)/)
+    const since = sinceMatch ? Number(sinceMatch[1]) : 0
+    const all = ctx.events.get(eventsMatch[1]!)
+    const filtered = since > 0 ? all.filter((e) => e.ts >= since) : all
+    return json(200, { events: filtered })
   }
 
   return json(404, { error: 'not found' })

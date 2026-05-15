@@ -15,6 +15,7 @@ import { costSpikeRule } from './rules/cost-spike.js'
 import { loopDetectRule } from './rules/loop-detect.js'
 import { subagentStuckRule } from './rules/subagent-stuck.js'
 import { EventBuffer } from './event-buffer.js'
+import { AlertStore } from './alert-store.js'
 import { loadConfig } from './config-loader.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
@@ -49,12 +50,16 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
   const watchers = new Map<string, TranscriptWatcher>()
 
   const platform = getPlatformActions()
+  const eventBuffer = new EventBuffer()
+  const alertStore = new AlertStore()
   const dist = findDashboardDist()
   const http = await startHttpServer({
     port: opts.port ?? 0,
     registry,
     broadcaster,
     platform,
+    alertStore,
+    eventBuffer,
     ...(dist !== undefined && { staticDir: dist }),
   })
   const sock = await startSocketServer(getSocketPath(), async (frame) => {
@@ -123,8 +128,6 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     startedAt: Date.now(),
   })
 
-  const eventBuffer = new EventBuffer()
-
   const cockpitCfg = loadConfig()
   const ruleEngine = new RuleEngine({
     rules: [ctxHighRule, costSpikeRule, loopDetectRule, subagentStuckRule],
@@ -146,6 +149,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
       void platform.notify({ title: alert.title, body: alert.body, deepLink }).catch((e) => {
         console.error('[cockpit] notify failed:', e)
       })
+      alertStore.push(alert)
       broadcaster.publishAlert(alert)
     }
   }, 10_000)
