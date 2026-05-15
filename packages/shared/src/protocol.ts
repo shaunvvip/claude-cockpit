@@ -12,3 +12,13 @@ export function isRpcFrame(value: unknown): value is RpcFrame {
   const v = value as Record<string, unknown>
   return typeof v.type === 'string' && FRAME_TYPES.has(v.type)
 }
+
+export type AlertRuleId = 'ctx-high' | 'cost-spike' | 'loop-detect' | 'subagent-stuck'
+
+export interface AlertEvent {
+  ruleId: AlertRuleId
+  sessionId: string
+  ts: number
+  title: string
+  body: string
+}
