@@ -26,6 +26,8 @@ export class SessionRegistry {
       lastUpdate: patch.lastUpdate,
       startedAt: patch.startedAt ?? patch.lastUpdate,
       ...(patch.branch !== undefined && { branch: patch.branch }),
+      ...(patch.lastEditPath !== undefined && { lastEditPath: patch.lastEditPath }),
+      ...(patch.lastEditTs !== undefined && { lastEditTs: patch.lastEditTs }),
     }
     this.map.set(sessionId, created)
     return created

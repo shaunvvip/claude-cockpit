@@ -54,9 +54,9 @@ export async function handleApiRequest(
   if (method === 'POST' && openFile) {
     const s = ctx.registry.get(openFile[1]!)
     if (!s) return json(404, { error: 'session not found' })
-    const recentEdit = s.tools.find((t) => t.name === 'Edit' || t.name === 'Write')
-    if (!recentEdit) return json(400, { error: 'no recent file edit found' })
-    return json(200, { ok: true, note: 'open-file scaffold; needs path tracking in Phase 2' })
+    if (!s.lastEditPath) return json(400, { error: 'no recent file edit found' })
+    await ctx.platform.openFile(s.lastEditPath)
+    return json(200, { ok: true, path: s.lastEditPath })
   }
 
   const openDash = url.match(/^\/api\/sessions\/([^/]+)\/open-dashboard$/)

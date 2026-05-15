@@ -57,23 +57,6 @@ describe('handleApiRequest', () => {
     expect(res?.status).toBe(404)
   })
 
-  it('POST open-file returns 400 when no recent edit', async () => {
-    const ctx = makeCtx()
-    ctx.registry.upsert('a', { cwd: '/x', model: 'm', transcriptPath: '/t', lastUpdate: 1, pid: 1, ppid: 1, startedAt: 1 })
-    const res = await handleApiRequest('POST', '/api/sessions/a/open-file', ctx)
-    expect(res?.status).toBe(400)
-  })
-
-  it('POST open-file returns 200 with scaffold note when recent Edit exists', async () => {
-    const ctx = makeCtx()
-    ctx.registry.upsert('a', {
-      cwd: '/x', model: 'm', transcriptPath: '/t', lastUpdate: 1, pid: 1, ppid: 1, startedAt: 1,
-      tools: [{ ts: 1, name: 'Edit', status: 'ok' }],
-    })
-    const res = await handleApiRequest('POST', '/api/sessions/a/open-file', ctx)
-    expect(res?.status).toBe(200)
-  })
-
   it('POST open-dashboard calls platform.openUrl with /sessions/:id', async () => {
     const ctx = makeCtx()
     const calls: string[] = []
@@ -106,5 +89,32 @@ describe('POST /interrupt', () => {
     expect(res?.status).toBe(200)
     expect(killSpy).toHaveBeenCalledWith(99999, 'SIGINT')
     killSpy.mockRestore()
+  })
+})
+
+describe('POST /open-file', () => {
+  it('returns 404 for unknown session', async () => {
+    const res = await handleApiRequest('POST', '/api/sessions/nope/open-file', makeCtx())
+    expect(res?.status).toBe(404)
+  })
+
+  it('returns 400 when no lastEditPath', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0 })
+    const openFile = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, openFile } as any
+    const res = await handleApiRequest('POST', '/api/sessions/sid/open-file', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(400)
+  })
+
+  it('calls platform.openFile with lastEditPath', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('sid', { lastUpdate: 0, lastEditPath: '/x/y.ts' })
+    const openFile = vi.fn(async () => undefined)
+    const platform = { platform: 'darwin' as const, openFile } as any
+    const res = await handleApiRequest('POST', '/api/sessions/sid/open-file', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(200)
+    expect(openFile).toHaveBeenCalledWith('/x/y.ts')
+    expect(JSON.parse(res!.body).path).toBe('/x/y.ts')
   })
 })
