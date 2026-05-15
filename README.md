@@ -15,6 +15,31 @@
 
 `claude-cockpit` is that.
 
+## What you get (v0.5 beta)
+
+Everything in v0.1 alpha **plus**:
+
+- **Smart alerts**: 4 built-in rules (ctx-high / cost-spike / loop-detect / subagent-stuck) fire native macOS / Linux system notifications; configurable / toggle-able via `~/.claude-cockpit/config.json`.
+- **Working control actions**: `[stop]` / `[file]` OSC 8 statusline links actually work. Dashboard Stop / Open file / Copy id / Focus terminal buttons too.
+- **Session detail page** `/sessions/:id` with live CTX chart, 5-min tool bar chart, todos, and event timeline.
+
+### System dependencies
+
+- **macOS**: `osascript` (system, always present). First-run shows a system notification permission prompt — allow it for alerts to work.
+- **Linux**: `notify-send` (libnotify, install via your package manager). `wmctrl` optional for Focus terminal action — degrades gracefully if missing.
+
+### config.json (optional)
+
+`~/.claude-cockpit/config.json`:
+
+~~~jsonc
+{
+  "disabledRules": ["loop-detect"],
+  "loopDetectThreshold": 12,
+  "ctxHighThresholdPct": 85
+}
+~~~
+
 ## What you get (v0.1 alpha)
 
 - **Statusline plugin** (drop-in replacement for claude-hud): Essential preset by default — 2 rows with model, cwd, ctx %, cost, tools, todos + OSC 8 clickable `[dash]` `[stop]` `[file]` links.
