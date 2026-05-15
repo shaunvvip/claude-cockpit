@@ -24,6 +24,8 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
       cwd: parsed.cwd,
       model: parsed.model,
       transcriptPath: parsed.transcriptPath,
+      pid: process.pid,
+      ppid: process.ppid,         // statusline subprocess's parent — Claude Code main
       ...(parsed.branch !== undefined && { branch: parsed.branch }),
       ...(parsed.cost !== undefined && { cost: parsed.cost }),
       lastUpdate: Date.now(),
