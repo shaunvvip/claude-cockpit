@@ -1,6 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { WsBroadcaster } from './ws.js'
 import type { SessionState } from '@claude-cockpit/shared'
+import type { AlertEvent } from '@claude-cockpit/shared'
 
 const sample: SessionState = {
   sessionId: 'sid', pid: 0, ppid: 0, cwd: '/x', model: 'm',
@@ -42,5 +43,25 @@ describe('WsBroadcaster', () => {
     unsubA()
     b.publishUpsert(sample)
     expect(calls).toEqual(['B'])
+  })
+})
+
+describe('WsBroadcaster.publishAlert', () => {
+  it('delivers ALERT to all subscribers', () => {
+    const b = new WsBroadcaster()
+    const a = vi.fn()
+    const c = vi.fn()
+    b.subscribe(a)
+    b.subscribe(c)
+    const alert: AlertEvent = {
+      ruleId: 'ctx-high',
+      sessionId: 'sid',
+      ts: 1,
+      title: 't',
+      body: 'b',
+    }
+    b.publishAlert(alert)
+    expect(a).toHaveBeenCalledWith({ type: 'ALERT', alert })
+    expect(c).toHaveBeenCalledWith({ type: 'ALERT', alert })
   })
 })

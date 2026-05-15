@@ -1,8 +1,9 @@
-import type { SessionState } from '@claude-cockpit/shared'
+import type { AlertEvent, SessionState } from '@claude-cockpit/shared'
 
 export type WsEvent =
   | { type: 'SESSION_UPSERT'; session: SessionState }
   | { type: 'SESSION_REMOVED'; sessionId: string }
+  | { type: 'ALERT'; alert: AlertEvent }
 
 export type WsListener = (event: WsEvent) => void
 
@@ -22,5 +23,9 @@ export class WsBroadcaster {
 
   publishRemoved(sessionId: string): void {
     for (const l of this.listeners) l({ type: 'SESSION_REMOVED', sessionId })
+  }
+
+  publishAlert(alert: AlertEvent): void {
+    for (const l of this.listeners) l({ type: 'ALERT', alert })
   }
 }
