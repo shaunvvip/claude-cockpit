@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process'
 import { pingDaemon } from './rpc-client.js'
+import { clearStaleSocket } from '../../daemon/src/stale-sock.js'
 
 export interface SpawnDaemonOptions {
   command: string
@@ -31,5 +32,6 @@ export async function spawnDaemon(opts: SpawnDaemonOptions): Promise<() => Promi
 
 export async function ensureDaemon(opts: SpawnDaemonOptions): Promise<void> {
   if (await pingDaemon(opts.sockPath, 200)) return
+  clearStaleSocket(opts.sockPath)
   await spawnDaemon(opts)
 }
