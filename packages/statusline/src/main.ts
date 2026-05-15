@@ -46,6 +46,7 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
 
   const ctxPct = merged?.ctxPct ?? 0
   const toolsCount = merged?.tools.length ?? 0
+  const subagentCount = merged?.taskCount ?? 0
   const todosDone = merged?.todos.filter((t) => t.completed).length ?? 0
   const todosTotal = merged?.todos.length ?? 0
 
@@ -62,7 +63,7 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
     ...(parsed.branch !== undefined && { branch: parsed.branch }),
     ctxPct,
     toolsCount,
-    subagentCount: 0,
+    subagentCount,
     todosDone,
     todosTotal,
     ...(usage5hPct !== undefined && { usage5hPct }),

@@ -145,6 +145,19 @@ describe('renderEssential', () => {
     expect(line2).not.toContain('7d ')
   })
 
+  it('line 1 shows "subagents ×N" only when N > 0', () => {
+    const base = {
+      sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
+      ctxPct: 0, toolsCount: 0, todosDone: 0, todosTotal: 0,
+      dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
+      supportsOsc8: false,
+    } as const
+    const withSubs = renderEssential({ ...base, subagentCount: 3 }).split('\n')[0]!
+    const noSubs = renderEssential({ ...base, subagentCount: 0 }).split('\n')[0]!
+    expect(withSubs).toContain('subagents ×3')
+    expect(noSubs).not.toContain('subagents')
+  })
+
   it('line 1 omits branch segment when undefined', () => {
     const out = renderEssential({
       sessionId: 's', cwd: '/x', model: 'm',

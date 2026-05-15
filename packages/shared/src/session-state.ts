@@ -37,6 +37,7 @@ export interface SessionState {
   inputTokens?: number
   outputTokens?: number
   tools: ToolCall[]        // most-recent first, capped at 50
+  taskCount?: number       // running total of Task (subagent) tool calls this session
   todos: TodoItem[]
   mcpServers: McpServerInfo[]
   transcriptPath: string

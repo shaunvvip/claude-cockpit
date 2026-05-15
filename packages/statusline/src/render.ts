@@ -81,6 +81,7 @@ export function renderEssential(input: EssentialInput): string {
   const line1Parts = [`● ${input.model}`, cwdShort]
   if (input.branch) line1Parts.push(input.branch)
   line1Parts.push(`tools ${input.toolsCount}↑`)
+  if (input.subagentCount > 0) line1Parts.push(`subagents ×${input.subagentCount}`)
   line1Parts.push(`todos ${input.todosDone}/${input.todosTotal}`)
   const line1 = `${line1Parts.join(' · ')} · ${dash} ${stop} ${file}`
 

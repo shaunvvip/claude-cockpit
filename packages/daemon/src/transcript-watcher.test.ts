@@ -66,6 +66,23 @@ describe('TranscriptWatcher', () => {
     expect(usage!.cacheCreationTokens).toBe(174)
   })
 
+  it('streams a 2 MB transcript in chunks without OOM (perf gate)', async () => {
+    const path = `${mkdtempSync(join(tmpdir(), 'tw-perf-'))}/big.jsonl`
+    const line = JSON.stringify({
+      message: { content: [{ type: 'tool_use', name: 'Read', input: { file_path: '/x.ts' } }] },
+    })
+    // 2 MB of identical tool_use lines — should produce ~thousands of TOOL_USE events
+    const lines = Array.from({ length: 10_000 }, () => line).join('\n') + '\n'
+    writeFileSync(path, lines)
+    const events: TranscriptEvent[] = []
+    watcher = new TranscriptWatcher(path, (e) => events.push(e))
+    const t0 = Date.now()
+    await watcher.start()
+    const ms = Date.now() - t0
+    expect(events.filter(e => e.type === 'TOOL_USE')).toHaveLength(10_000)
+    expect(ms).toBeLessThan(2000)   // generous gate; should be well under 500ms
+  })
+
   it('parses content existing in the file BEFORE start() (Bug A regression)', async () => {
     dir = mkdtempSync(join(tmpdir(), 'tw-'))
     const path = join(dir, 't.jsonl')

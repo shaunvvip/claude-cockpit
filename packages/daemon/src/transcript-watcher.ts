@@ -36,16 +36,35 @@ export class TranscriptWatcher {
     if (this.stopped || !this.fh) return
     const stat = await this.fh.stat()
     if (stat.size <= this.offset) return
-    const buf = Buffer.alloc(stat.size - this.offset)
-    await this.fh.read(buf, 0, buf.length, this.offset)
-    this.offset = stat.size
-    const text = buf.toString('utf8')
-    for (const line of text.split('\n')) {
-      if (!line) continue
+
+    // Stream in 256 KB chunks to avoid allocating a single huge Buffer on first
+    // start when transcripts can be 10+ MB. Carry a partial-line tail between
+    // chunks so JSON.parse only sees complete lines.
+    const CHUNK = 256 * 1024
+    const reusable = Buffer.alloc(CHUNK)
+    let tail = ''
+    while (this.offset < stat.size && !this.stopped) {
+      const want = Math.min(CHUNK, stat.size - this.offset)
+      const { bytesRead } = await this.fh.read(reusable, 0, want, this.offset)
+      if (bytesRead <= 0) break
+      this.offset += bytesRead
+      const text = tail + reusable.subarray(0, bytesRead).toString('utf8')
+      const lines = text.split('\n')
+      tail = lines.pop() ?? ''           // last segment may be incomplete; defer
+      for (const line of lines) {
+        if (!line) continue
+        try {
+          const obj = JSON.parse(line) as Record<string, unknown>
+          this.handleLine(obj)
+        } catch { /* skip malformed */ }
+      }
+    }
+    // Flush any complete final line (file may end without trailing newline)
+    if (tail.length > 0) {
       try {
-        const obj = JSON.parse(line) as Record<string, unknown>
+        const obj = JSON.parse(tail) as Record<string, unknown>
         this.handleLine(obj)
-      } catch { /* skip malformed */ }
+      } catch { /* incomplete tail, will retry on next append */ }
     }
   }
 

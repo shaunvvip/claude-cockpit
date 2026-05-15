@@ -87,7 +87,23 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
             { ts: e.ts, name: e.name, status: 'ok' as const },
             ...cur.tools,
           ].slice(0, 50)
-          const next = registry.upsert(sessionId, { tools: newTools, lastUpdate: e.ts })
+          // Bump Task subagent counter (uncapped, unlike tools[])
+          const nextTaskCount = (cur.taskCount ?? 0) + (e.name === 'Task' ? 1 : 0)
+          // Update MCP server lastCallTs when tool name matches mcp__<server>__<tool>
+          let nextMcp = cur.mcpServers
+          const mcpMatch = e.name.match(/^mcp__([^_]+(?:_[^_]+)*)__/)
+          if (mcpMatch) {
+            const server = mcpMatch[1]
+            nextMcp = cur.mcpServers.map((s) =>
+              s.name === server ? { ...s, lastCallTs: e.ts } : s,
+            )
+          }
+          const next = registry.upsert(sessionId, {
+            tools: newTools,
+            taskCount: nextTaskCount,
+            mcpServers: nextMcp,
+            lastUpdate: e.ts,
+          })
           broadcaster.publishUpsert(next)
         } else if (e.type === 'USAGE') {
           const cur = registry.get(sessionId)
