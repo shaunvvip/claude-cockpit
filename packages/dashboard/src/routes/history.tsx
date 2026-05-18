@@ -3,6 +3,7 @@ import { Route as Root } from './__root.js'
 import { HistoryTabs } from '../components/HistoryTabs.js'
 import { TrendsTab } from '../components/history/TrendsTab.js'
 import { TopTab } from '../components/history/TopTab.js'
+import { ProjectsTab } from '../components/history/ProjectsTab.js'
 
 export interface HistorySearch { tab?: 'trends' | 'top' | 'projects' }
 
@@ -32,7 +33,7 @@ function HistoryPage() {
       />
       {activeTab === 'trends'   && <TrendsTab />}
       {activeTab === 'top'      && <TopTab />}
-      {activeTab === 'projects' && <div className="text-cockpit-muted text-xs">Projects tab — coming in Task 18</div>}
+      {activeTab === 'projects' && <ProjectsTab />}
     </div>
   )
 }
