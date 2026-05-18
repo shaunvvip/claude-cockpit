@@ -33,6 +33,8 @@ function findDashboardDist(): string | undefined {
   const candidates = [
     join(here, '../../dashboard/dist'),     // packages/daemon/src/  → packages/dashboard/dist
     join(here, '../../../dashboard/dist'),  // packages/daemon/dist/ → packages/dashboard/dist
+    join(here, 'dashboard'),                 // dist/daemon.js → dist/dashboard (npm bundle)
+    join(here, '../dashboard'),              // safety net
   ]
   for (const c of candidates) if (existsSync(c)) return c
   return undefined
