@@ -1,4 +1,5 @@
 import type { SessionState } from '@claude-cockpit/shared'
+import { Link } from '@tanstack/react-router'
 import { ctxColor, palette } from '../lib/colors.js'
 import { McpHealthBar } from './McpHealthBar.js'
 import { UsageBars } from './UsageBars.js'
@@ -11,8 +12,10 @@ export function SessionCard({ session: s }: { session: SessionState }) {
   const cwdShort = s.cwd.split('/').filter(Boolean).slice(-1)[0] ?? s.cwd
   const todosDone = s.todos.filter((t) => t.completed).length
   return (
-    <div
-      className="bg-cockpit-panel border border-cockpit-line rounded p-3 mb-1"
+    <Link
+      to="/sessions/$sessionId"
+      params={{ sessionId: s.sessionId }}
+      className="block bg-cockpit-panel border border-cockpit-line rounded p-3 mb-1 hover:border-cockpit-info cursor-pointer"
       style={{ borderLeft: `3px solid ${STATUS_BG[s.status]}` }}
     >
       <div className="grid grid-cols-[1fr_60px_60px_60px_60px_80px] gap-3 items-center text-xs">
@@ -46,6 +49,6 @@ export function SessionCard({ session: s }: { session: SessionState }) {
       <div className="mt-2">
         <McpHealthBar servers={s.mcpServers} />
       </div>
-    </div>
+    </Link>
   )
 }
