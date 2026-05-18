@@ -15,6 +15,53 @@
 
 `claude-cockpit` is that.
 
+## What you get (v0.9 beta)
+
+Everything in v0.5 beta **plus**:
+
+- **History layer** — every session / tool call / alert / 5h-7d usage snapshot is persisted to `~/.claude-cockpit/cockpit.db` (SQLite WAL). 5-second batched flush; 90-day rolling cleanup at local midnight.
+- **`/history` page** with three tabs:
+  - **Trends** — 30-day daily cost bar, cache hit rate line, 5h/7d subscriber-usage history
+  - **Top** — `metric × dimension` matrix (cost / tokens / tool-calls × project / tool / session)
+  - **Projects** — per-project totals + last activity, grouped by `workspace.project_dir`
+- **Overview Sparklines** are now backed by real 24-hour aggregates — no more mock data.
+- **`cost-spike` baseline** has graduated from in-memory rolling to SQLite 7-day window — more stable, survives daemon restarts.
+
+### Backup your history
+
+Three SQLite files in `~/.claude-cockpit/`:
+
+~~~bash
+cp ~/.claude-cockpit/cockpit.db* /your/backup/dir/
+~~~
+
+(Daemon must not be running, or copy while idle. WAL files are part of consistency — copy all three.)
+
+### Clear history
+
+Either through the dashboard ("Clear all history…" on the Projects tab, with confirm modal) or via curl:
+
+~~~bash
+curl -X POST http://localhost:<port>/api/history/clear
+~~~
+
+### Configuration
+
+Optional in `~/.claude-cockpit/config.json`:
+
+~~~jsonc
+{
+  "retentionDays": 90,        // history rolling window; default 90
+  "historyFlushMs": 5000      // batch flush interval; default 5000
+}
+~~~
+
+### Graceful degradation
+
+If `better-sqlite3` fails to load (Alpine glibc / unsupported arch / missing build tools), the daemon stays alive, statusline / Overview / detail page work normally — only `/history` shows "History unavailable" and `cost-spike` rule falls back to its v0.5 behavior.
+
+---
+
 ## What you get (v0.5 beta)
 
 Everything in v0.1 alpha **plus**:
@@ -170,9 +217,9 @@ claude-cockpit/
 
 ## Roadmap
 
-- ✅ **v0.5** (shipped — current) — Smart alerts (ctx-high / cost-spike / loop-detect / subagent-stuck) + system notifications + working `[stop]` / `[file]` actions + session detail page + 5h/7d subscriber usage bars + ANSI-colored statusline.
-- **v0.9** (next) — SQLite history: 30-day trends, top sessions by cost / tokens, project cost ranking, real (non-mock) Sparklines, `/history` page with three tabs.
-- v1.0 — Minimal / Full presets, configure wizard, light theme, EN/CN i18n, single-binary npm publish.
+- ✅ **v0.5** (shipped) — Smart alerts (ctx-high / cost-spike / loop-detect / subagent-stuck) + system notifications + working `[stop]` / `[file]` actions + session detail page + 5h/7d subscriber usage bars + ANSI-colored statusline.
+- ✅ **v0.9** (shipped — current) — SQLite history: 30-day trends, top sessions by cost / tokens, project cost ranking, real (non-mock) Sparklines, `/history` page with three tabs, cost-spike baseline graduated to 7d SQLite window.
+- **v1.0** (next) — Minimal / Full presets, configure wizard, light theme, EN/CN i18n, single-binary npm publish.
 
 ## Install (beta — v0.5.x)
 
