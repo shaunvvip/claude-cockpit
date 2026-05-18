@@ -6,6 +6,7 @@ import { Route as IndexRoute } from './routes/index.js'
 import { Route as SessionDetailRoute } from './routes/sessions.$sessionId.js'
 import { Route as HistoryRoute } from './routes/history.js'
 import { loadStoredTheme, getEffectiveTheme, applyTheme, watchSystemPreference } from './lib/theme.js'
+import { initI18n, loadStoredLang } from './i18n/index.js'
 import './styles.css'
 
 const routeTree = RootRoute.addChildren([IndexRoute, SessionDetailRoute, HistoryRoute])
@@ -20,6 +21,8 @@ applyTheme(getEffectiveTheme(loadStoredTheme()))
 watchSystemPreference(() => {
   if (loadStoredTheme() === 'auto') applyTheme(getEffectiveTheme('auto'))
 })
+
+await initI18n(loadStoredLang() ?? undefined)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode><RouterProvider router={router} /></StrictMode>,

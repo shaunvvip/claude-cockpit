@@ -1,0 +1,61 @@
+{
+  "nav": { "overview": "总览", "history": "历史" },
+  "history": {
+    "title": "过去 30 天",
+    "tabs": { "trends": "趋势", "top": "排行", "projects": "项目" },
+    "trends": {
+      "totals": "过去 30 天 · 累计",
+      "sessions": "会话",
+      "cacheHit": "缓存命中",
+      "dailyCost": "每日成本",
+      "cacheRate": "缓存命中率",
+      "usage": "订阅用量（快照）"
+    },
+    "top": { "by": "按" },
+    "projects": {
+      "clear": "清空所有历史…",
+      "confirm": {
+        "title": "永久删除所有历史？",
+        "body": "将清空全部 4 张表。不可恢复。",
+        "cancel": "取消",
+        "ok": "清空",
+        "clearing": "清空中…"
+      }
+    },
+    "loading": "加载中…",
+    "noData": "此窗口内无数据。",
+    "noProjects": "此窗口内无项目。"
+  },
+  "session": {
+    "details": "会话详情",
+    "controls": {
+      "stop": "停止",
+      "file": "打开文件",
+      "copy": "复制 id",
+      "focus": "聚焦终端"
+    },
+    "alerts": {
+      "ctxHigh": "上下文接近上限",
+      "costSpike": "成本激增",
+      "loopDetect": "可能在循环",
+      "subagentStuck": "子代理卡住"
+    }
+  },
+  "overview": {
+    "noActiveSessions": "暂无活跃会话。",
+    "active": "活跃会话",
+    "cost24h": "成本 · 24 小时",
+    "ctx24h": "上下文 % · 24 小时",
+    "noDataYet": "暂无数据"
+  },
+  "usage": {
+    "5h": { "tooltip": "5 小时滚动窗口（从上次重置后首次请求计起）" },
+    "7d": { "tooltip": "周配额 —— 按账号计费周对齐重置，不是滚动 7 天" },
+    "resetsIn": "{{countdown}}后重置"
+  },
+  "mcp": {
+    "none": "无 MCP",
+    "lastUsed": "{{ago}}前使用",
+    "notUsedYet": "尚未使用"
+  }
+}

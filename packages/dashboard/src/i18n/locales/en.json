@@ -1,0 +1,61 @@
+{
+  "nav": { "overview": "Overview", "history": "History" },
+  "history": {
+    "title": "Past 30 days",
+    "tabs": { "trends": "Trends", "top": "Top", "projects": "Projects" },
+    "trends": {
+      "totals": "Last 30 days · totals",
+      "sessions": "sessions",
+      "cacheHit": "cache hit",
+      "dailyCost": "DAILY COST",
+      "cacheRate": "CACHE HIT RATE",
+      "usage": "SUBSCRIBER USAGE (snapshots)"
+    },
+    "top": { "by": "by" },
+    "projects": {
+      "clear": "Clear all history…",
+      "confirm": {
+        "title": "Permanently delete all history?",
+        "body": "This empties all 4 tables. Cannot be undone.",
+        "cancel": "Cancel",
+        "ok": "Clear",
+        "clearing": "Clearing…"
+      }
+    },
+    "loading": "Loading…",
+    "noData": "No data in this window.",
+    "noProjects": "No projects in this window."
+  },
+  "session": {
+    "details": "SESSION DETAIL",
+    "controls": {
+      "stop": "Stop",
+      "file": "Open file",
+      "copy": "Copy id",
+      "focus": "Focus term"
+    },
+    "alerts": {
+      "ctxHigh": "Context near limit",
+      "costSpike": "Cost spike",
+      "loopDetect": "Possible loop",
+      "subagentStuck": "Subagent stuck"
+    }
+  },
+  "overview": {
+    "noActiveSessions": "No active sessions yet.",
+    "active": "ACTIVE SESSIONS",
+    "cost24h": "COST · 24h",
+    "ctx24h": "CONTEXT % · 24h",
+    "noDataYet": "no data yet"
+  },
+  "usage": {
+    "5h": { "tooltip": "5-hour rolling window (from first use after last reset)" },
+    "7d": { "tooltip": "Weekly quota — resets on your account billing-week boundary, not a rolling-7-days count" },
+    "resetsIn": "resets in {{countdown}}"
+  },
+  "mcp": {
+    "none": "no MCP",
+    "lastUsed": "last used {{ago}}",
+    "notUsedYet": "not used yet"
+  }
+}
