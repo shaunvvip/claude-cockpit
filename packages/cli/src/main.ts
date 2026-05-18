@@ -1,4 +1,5 @@
 import { runConfigure } from './configure.js'
+import { runStatus } from './status.js'
 
 /**
  * CLI entry — dispatched by bin/claude-cockpit.js when subcommand is
@@ -10,9 +11,7 @@ export async function main(argv: readonly string[]): Promise<number> {
     case 'configure':
       return runConfigure()
     case 'status':
-      // Filled in Task 8
-      console.error('status: not yet implemented')
-      return 1
+      return runStatus()
     default:
       console.error(`unknown subcommand: ${cmd}`)
       return 1
