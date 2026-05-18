@@ -13,10 +13,12 @@
     "test": "vitest run",
     "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
     "typecheck": "npm run -ws --if-present typecheck",
-    "lint": "echo 'lint placeholder — wired up in later task'"
+    "lint": "echo 'lint placeholder — wired up in later task'",
+    "build:bundle": "tsx tools/bundle.ts"
   },
   "devDependencies": {
     "@types/node": "^20.12.0",
+    "esbuild": "^0.21.5",
     "tsx": "^4.22.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
