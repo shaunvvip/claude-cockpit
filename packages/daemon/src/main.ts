@@ -1,6 +1,8 @@
 import { startSocketServer } from './socket-server.js'
 import { startHttpServer } from './http-server.js'
-import { getSocketPath, getRuntimeInfoPath, getCockpitDir } from './paths.js'
+import { getSocketPath, getRuntimeInfoPath, getCockpitDir, getDbPath } from './paths.js'
+import { tryOpenHistory } from './history/availability.js'
+import type { HistoryStore } from './history/store.js'
 import { writeRuntimeInfo, deleteRuntimeInfo } from './runtime-info.js'
 import { IdleChecker } from './lifecycle.js'
 import { SessionRegistry } from './session-registry.js'
@@ -52,6 +54,14 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
   const platform = getPlatformActions()
   const eventBuffer = new EventBuffer()
   const alertStore = new AlertStore()
+
+  // History layer — best-effort; degrades gracefully if better-sqlite3 fails (R15)
+  const historyAvail = await tryOpenHistory(getDbPath())
+  const historyStore: HistoryStore | undefined = historyAvail.store
+  if (!historyAvail.available) {
+    console.warn('[cockpit] history layer disabled:', historyAvail.reason)
+  }
+
   const dist = findDashboardDist()
   const http = await startHttpServer({
     port: opts.port ?? 0,
@@ -60,6 +70,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     platform,
     alertStore,
     eventBuffer,
+    ...(historyStore !== undefined && { historyStore }),
     ...(dist !== undefined && { staticDir: dist }),
   })
   const sock = await startSocketServer(getSocketPath(), async (frame) => {
@@ -74,6 +85,8 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
       lastUpdate: Date.now(),
     })
     broadcaster.publishUpsert(updated)
+    historyStore?.recordSession(updated)
+    historyStore?.recordUsage(updated, Date.now())
 
     // Lazy-start a watcher for this session's transcript on first sight
     if (updated.transcriptPath && !watchers.has(frame.sessionId)) {
@@ -105,6 +118,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
             lastUpdate: e.ts,
           })
           broadcaster.publishUpsert(next)
+          historyStore?.recordToolCall(sessionId, e.ts, e.name)
         } else if (e.type === 'USAGE') {
           const cur = registry.get(sessionId)
           if (!cur) return
@@ -178,8 +192,13 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
       })
       alertStore.push(alert)
       broadcaster.publishAlert(alert)
+      historyStore?.recordAlert(alert)
     }
   }, 10_000)
+
+  const flushTimer: NodeJS.Timeout | undefined = historyStore
+    ? setInterval(() => { try { historyStore.flush() } catch (e) { console.error('[cockpit] history flush failed:', e) } }, 5000)
+    : undefined
 
   // Forward-declare shutdown so the timer callback can reference it
   let shutdownInvoked = false
@@ -188,6 +207,8 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     shutdownInvoked = true
     clearInterval(idleTimer)
     clearInterval(ruleTick)
+    if (flushTimer) clearInterval(flushTimer)
+    historyStore?.close()
     for (const w of watchers.values()) {
       try { await w.stop() } catch { /* */ }
     }
