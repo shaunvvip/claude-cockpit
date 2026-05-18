@@ -7,6 +7,7 @@ import { DEFAULT_RULE_CONFIG, type RuleConfig } from './rules/types.js'
 export interface CockpitConfig {
   disabledRules: Set<AlertRuleId>
   ruleConfig: RuleConfig
+  retentionDays?: number
 }
 
 interface RawConfig {
@@ -16,6 +17,7 @@ interface RawConfig {
   loopDetectThreshold?: number
   loopDetectWindowMs?: number
   subagentStuckMinutes?: number
+  retentionDays?: number
 }
 
 const VALID_RULE_IDS = new Set<AlertRuleId>(['ctx-high', 'cost-spike', 'loop-detect', 'subagent-stuck'])
@@ -44,5 +46,10 @@ export function loadConfig(path: string = join(homedir(), '.claude-cockpit', 'co
     loopDetectWindowMs:     raw.loopDetectWindowMs     ?? DEFAULT_RULE_CONFIG.loopDetectWindowMs,
     subagentStuckMinutes:   raw.subagentStuckMinutes   ?? DEFAULT_RULE_CONFIG.subagentStuckMinutes,
   }
-  return { disabledRules: disabled, ruleConfig }
+  const retentionDays = typeof raw.retentionDays === 'number' && raw.retentionDays > 0 ? raw.retentionDays : undefined
+  return {
+    disabledRules: disabled,
+    ruleConfig,
+    ...(retentionDays !== undefined && { retentionDays }),
+  }
 }
