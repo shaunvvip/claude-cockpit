@@ -6,6 +6,7 @@ import type { SessionRegistry } from '../session-registry.js'
 import type { PlatformActions } from '../platform/index.js'
 import type { EventBuffer } from '../event-buffer.js'
 import type { AlertStore } from '../alert-store.js'
+import type { HistoryStore } from '../history/store.js'
 
 const execFile = promisify(_execFile)
 
@@ -37,6 +38,7 @@ export interface ApiContext {
   request?: IncomingMessage    // optional for backward-compat with existing tests
   alerts?: AlertStore
   events?: EventBuffer
+  history?: HistoryStore
 }
 
 function checkOriginOk(req: IncomingMessage | undefined, port: number): boolean {

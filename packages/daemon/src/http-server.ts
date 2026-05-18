@@ -23,6 +23,7 @@ export interface HttpServerOptions {
   platform?: PlatformActions
   alertStore?: AlertStore
   eventBuffer?: EventBuffer
+  historyStore?: import('./history/store.js').HistoryStore
 }
 
 const MIME: Record<string, string> = {
@@ -73,6 +74,7 @@ export async function startHttpServer(opts: HttpServerOptions): Promise<HttpServ
         request: req,
         ...(opts.alertStore !== undefined && { alerts: opts.alertStore }),
         ...(opts.eventBuffer !== undefined && { events: opts.eventBuffer }),
+        ...(opts.historyStore !== undefined && { history: opts.historyStore }),
       })
       if (apiRes) {
         res.writeHead(apiRes.status, {
