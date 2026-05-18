@@ -53,4 +53,5 @@ export interface SessionState {
   usage5hResetAt?: number   // ms epoch
   usage7dPct?: number
   usage7dResetAt?: number
+  otherCount?: number          // live siblings count (added by /api/sessions/:id, not stored)
 }

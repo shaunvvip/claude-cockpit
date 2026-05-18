@@ -71,6 +71,51 @@ function renderUsageSegment(label: '5h' | '7d', pct: number | undefined, resetAt
   return cd ? `${label} ${bar} ${pctText} ${colorize(`(${cd})`, DIM)}` : `${label} ${bar} ${pctText}`
 }
 
+export interface FullInput extends EssentialInput {
+  cacheReadTokens?: number
+  toolNames?: readonly string[]    // recent distinct tool names
+  otherCount?: number
+}
+
+function formatCacheCount(tokens: number): string {
+  if (tokens >= 1_000_000) return `${(tokens / 1_000_000).toFixed(1)}M`
+  if (tokens >= 1000) return `${Math.round(tokens / 1000)}k`
+  return String(tokens)
+}
+
+export function renderFull(input: FullInput): string {
+  const essentialOut = renderEssential(input)
+  const lines = essentialOut.split('\n')
+  if (lines.length !== 2) return essentialOut    // safety fallback
+
+  // Append "cache Nk" to line 1 (right after todos, before " · [dash] [stop] [file]")
+  const cacheR = input.cacheReadTokens !== undefined && input.cacheReadTokens > 0
+    ? ` · cache ${formatCacheCount(input.cacheReadTokens)}`
+    : ''
+  // Locate the dash link marker — `osc8(...)` produces text containing `[dash]`.
+  // Simplest stable anchor: find ` · [dash]` (works regardless of OSC 8 wrapper).
+  const dashAnchor = ' · '
+  const dashIdx = lines[0]!.lastIndexOf(dashAnchor + (input.supportsOsc8 ? '\x1b]8;;' : '[dash]'))
+  if (cacheR) {
+    if (dashIdx > 0) {
+      lines[0] = lines[0]!.slice(0, dashIdx) + cacheR + lines[0]!.slice(dashIdx)
+    } else {
+      lines[0] = lines[0] + cacheR
+    }
+  }
+
+  // Append "tool: A·B·C" and "others ×N" to line 2
+  const toolDetail = input.toolNames && input.toolNames.length > 0
+    ? ` · tool: ${input.toolNames.slice(0, 3).join('·')}`
+    : ''
+  const othersDetail = input.otherCount !== undefined && input.otherCount > 0
+    ? ` · others ×${input.otherCount}`
+    : ''
+  lines[1] = lines[1] + toolDetail + othersDetail
+
+  return lines.join('\n')
+}
+
 export function renderEssential(input: EssentialInput): string {
   // Line 1 — identity + active work + actionable links
   //   ● model · cwd · branch? · tools N↑ · todos a/b · [dash] [stop] [file]

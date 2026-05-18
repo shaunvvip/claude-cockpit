@@ -1,5 +1,6 @@
 import { parseStatuslineInput } from './stdin.js'
-import { renderEssential } from './render.js'
+import { renderEssential, renderFull, renderMinimal } from './render.js'
+import { readStatuslineConfig } from './config-reader.js'
 import type { RuntimeInfo } from '../../daemon/src/runtime-info.js'
 import type { SessionState } from '@claude-cockpit/shared'
 
@@ -57,7 +58,24 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
   const usage7dPct = parsed.usage7dPct ?? merged?.usage7dPct
   const usage7dResetAt = parsed.usage7dResetAt ?? merged?.usage7dResetAt
 
-  return renderEssential({
+  const preset = readStatuslineConfig().preset
+  const toolNames = merged
+    ? Array.from(new Set(merged.tools.map((t) => t.name))).slice(0, 3)
+    : []
+
+  if (preset === 'minimal') {
+    return renderMinimal({
+      sessionId: parsed.sessionId,
+      cwd: parsed.cwd,
+      model: parsed.model,
+      ...(parsed.branch !== undefined && { branch: parsed.branch }),
+      ctxPct,
+      dashboardUrl: `http://localhost:${port}/sessions/${parsed.sessionId}`,
+      supportsOsc8: deps.detect(),
+    })
+  }
+
+  const essentialArgs = {
     sessionId: parsed.sessionId,
     cwd: parsed.cwd,
     model: parsed.model,
@@ -75,5 +93,16 @@ export async function runStatusline(deps: RunStatuslineDeps): Promise<string> {
     stopUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/interrupt-redirect`,
     fileUrl:      `http://localhost:${port}/api/sessions/${parsed.sessionId}/open-file-redirect`,
     supportsOsc8: deps.detect(),
-  })
+  }
+
+  if (preset === 'full') {
+    return renderFull({
+      ...essentialArgs,
+      ...(merged?.cacheReadTokens !== undefined && { cacheReadTokens: merged.cacheReadTokens }),
+      ...(toolNames.length > 0 && { toolNames }),
+      ...(merged?.otherCount !== undefined && { otherCount: merged.otherCount }),
+    })
+  }
+
+  return renderEssential(essentialArgs)
 }

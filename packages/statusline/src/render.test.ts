@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { renderMinimal, renderEssential, formatCountdown } from './render.js'
+import { renderMinimal, renderEssential, renderFull, formatCountdown } from './render.js'
 
 describe('renderMinimal', () => {
   it('outputs one line with model, cwd, branch, ctx', () => {
@@ -168,6 +168,42 @@ describe('renderEssential', () => {
     const line1 = out.split('\n')[0]!
     expect(line1).not.toContain('detached')
     expect(line1).not.toContain('main')
+  })
+})
+
+describe('renderFull', () => {
+  const base = {
+    sessionId: 's', cwd: '/x', model: 'm', branch: 'main',
+    ctxPct: 50, toolsCount: 7, subagentCount: 0, todosDone: 2, todosTotal: 5,
+    dashboardUrl: 'http://x', stopUrl: 'http://x', fileUrl: 'http://x',
+    supportsOsc8: false,
+  } as const
+
+  it('adds "cache Nk" to line 1 when cacheReadTokens > 0', () => {
+    const out = renderFull({ ...base, cacheReadTokens: 580_000 })
+    const [line1] = out.split('\n')
+    expect(line1).toContain('cache 580k')
+  })
+
+  it('omits cache segment when cacheReadTokens is 0 or undefined', () => {
+    const out = renderFull(base)
+    expect(out).not.toContain('cache')
+  })
+
+  it('adds "tool: A·B·C" to line 2 (first 3)', () => {
+    const out = renderFull({ ...base, toolNames: ['Bash', 'Read', 'Edit', 'Write'] })
+    expect(out.split('\n')[1]).toContain('tool: Bash·Read·Edit')
+  })
+
+  it('adds "others ×N" to line 2 when otherCount > 0', () => {
+    const out = renderFull({ ...base, otherCount: 3 })
+    expect(out.split('\n')[1]).toContain('others ×3')
+  })
+
+  it('omits both detail extras when absent', () => {
+    const out = renderFull(base)
+    expect(out).not.toContain('tool:')
+    expect(out).not.toContain('others')
   })
 })
 
