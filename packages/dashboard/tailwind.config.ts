@@ -7,16 +7,17 @@ export default {
     extend: {
       colors: {
         cockpit: {
-          bg:    '#0e1419',
-          panel: '#181e25',
-          line:  '#20262d',
-          text:  '#d8d9da',
-          muted: '#7a8794',
-          ok:    '#73bf69',
-          warn:  '#f2cc0c',
-          near:  '#f4a261',
-          crit:  '#e0524d',
-          info:  '#5794f2',
+          bg:    'var(--cockpit-bg)',
+          panel: 'var(--cockpit-panel)',
+          line:  'var(--cockpit-line)',
+          text:  'var(--cockpit-text)',
+          muted: 'var(--cockpit-muted)',
+          // signal colors stay hex (theme-invariant)
+          info:    '#5794f2',
+          ok:      '#73bf69',
+          warn:    '#f2cc0c',
+          near:    '#f4a261',
+          crit:    '#e0524d',
         },
       },
     },

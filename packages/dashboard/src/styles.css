@@ -2,4 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
-body { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+:root {
+  --cockpit-bg:     #0e1419;
+  --cockpit-panel:  #161b22;
+  --cockpit-line:   #30363d;
+  --cockpit-text:   #e6edf3;
+  --cockpit-muted:  #7a8794;
+}
+
+:root[data-theme='light'] {
+  --cockpit-bg:     #ffffff;
+  --cockpit-panel:  #f6f8fa;
+  --cockpit-line:   #d0d7de;
+  --cockpit-text:   #1f2328;
+  --cockpit-muted:  #6e7781;
+}
+
+body {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: var(--cockpit-bg);
+  color: var(--cockpit-text);
+}
