@@ -315,3 +315,30 @@ describe('POST /focus-terminal', () => {
     expect(res?.status).toBe(200)
   })
 })
+
+describe('GET /api/config', () => {
+  it('returns default preset/theme/lang when no config', async () => {
+    const registry = new SessionRegistry()
+    const platform = { platform: 'darwin' as const } as any
+    const res = await handleApiRequest('GET', '/api/config', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(200)
+    const body = JSON.parse(res!.body)
+    expect(body.statuslinePreset).toBe('essential')
+    expect(body.dashboardTheme).toBe('auto')
+    expect(body.dashboardLang).toBe('en')
+  })
+})
+
+describe('GET /api/sessions/:id otherCount', () => {
+  it('includes otherCount equal to live session count - 1', async () => {
+    const registry = new SessionRegistry()
+    registry.upsert('a', { lastUpdate: 0 })
+    registry.upsert('b', { lastUpdate: 0 })
+    registry.upsert('c', { lastUpdate: 0 })
+    const platform = { platform: 'darwin' as const } as any
+    const res = await handleApiRequest('GET', '/api/sessions/a', { registry, platform, port: 1234 })
+    expect(res?.status).toBe(200)
+    const body = JSON.parse(res!.body)
+    expect(body.otherCount).toBe(2)
+  })
+})

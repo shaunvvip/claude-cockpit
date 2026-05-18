@@ -69,6 +69,11 @@ export async function handleApiRequest(
     return handleHistoryRequest(method, url, ctx)
   }
 
+  if (url === '/api/config') {
+    const { handleConfigRequest } = await import('./config-routes.js')
+    return handleConfigRequest(method, url, ctx)
+  }
+
   if (method === 'GET' && url === '/api/sessions') {
     return json(200, { sessions: ctx.registry.list() })
   }
@@ -77,7 +82,8 @@ export async function handleApiRequest(
   if (method === 'GET' && get) {
     const s = ctx.registry.get(get[1]!)
     if (!s) return json(404, { error: 'session not found' })
-    return json(200, s)
+    const otherCount = Math.max(0, ctx.registry.list().length - 1)
+    return json(200, { ...s, otherCount })
   }
 
   const openFile = url.match(/^\/api\/sessions\/([^/]+)\/open-file$/)
