@@ -1,20 +1,30 @@
 {
-  "name": "claude-cockpit-monorepo",
-  "private": true,
+  "name": "claude-cockpit",
+  "version": "1.0.0-beta.0",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
+  "bin": {
+    "claude-cockpit": "./bin/claude-cockpit.js"
+  },
+  "files": ["dist", "bin", "README.md", "LICENSE"],
   "engines": {
     "node": ">=20"
   },
+  "workspaces": [
+    "packages/*"
+  ],
   "scripts": {
     "build": "npm run -ws --if-present build",
     "test": "vitest run",
     "test:e2e": "vitest run --config tests/e2e/vitest.config.ts",
     "typecheck": "npm run -ws --if-present typecheck",
     "lint": "echo 'lint placeholder — wired up in later task'",
-    "build:bundle": "tsx tools/bundle.ts"
+    "build:bundle": "tsx tools/bundle.ts",
+    "prepack": "npm run build:bundle"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "ws": "^8.18.0",
+    "@clack/prompts": "^0.7.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.0",
