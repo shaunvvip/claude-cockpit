@@ -170,11 +170,11 @@ claude-cockpit/
 
 ## Roadmap
 
-- v0.5 — Smart alerts (ctx 90% / cost spike / loop detection) + system notifications + working `[stop]` action.
-- v0.9 — SQLite history: 30-day trends, top sessions, project cost ranking, real (non-mock) Sparklines.
-- v1.0 — Minimal / Full presets, configure wizard, light theme, EN/CN i18n.
+- ✅ **v0.5** (shipped — current) — Smart alerts (ctx-high / cost-spike / loop-detect / subagent-stuck) + system notifications + working `[stop]` / `[file]` actions + session detail page + 5h/7d subscriber usage bars + ANSI-colored statusline.
+- **v0.9** (next) — SQLite history: 30-day trends, top sessions by cost / tokens, project cost ranking, real (non-mock) Sparklines, `/history` page with three tabs.
+- v1.0 — Minimal / Full presets, configure wizard, light theme, EN/CN i18n, single-binary npm publish.
 
-## Install (alpha)
+## Install (beta — v0.5.x)
 
 ```bash
 git clone https://github.com/shaunvvip/claude-cockpit

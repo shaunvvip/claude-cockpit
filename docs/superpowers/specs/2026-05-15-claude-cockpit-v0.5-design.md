@@ -9,7 +9,7 @@
 | 作者 | shuliuyang (shaun@dupoin.com) |
 | 协作 | Claude Opus 4.7 |
 | 关联 spec | [`2026-05-15-claude-cockpit-design.md`](./2026-05-15-claude-cockpit-design.md)（总体设计） |
-| 状态 | 已批准（brainstorm 阶段） |
+| 状态 | ✅ 已实现并发版（v0.5.0-beta → v0.5.4-beta，2026-05-15 ~ 2026-05-18） |
 
 ---
 

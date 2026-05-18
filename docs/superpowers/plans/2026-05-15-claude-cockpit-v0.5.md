@@ -1,5 +1,13 @@
 # claude-cockpit v0.5 (Phase 2) Implementation Plan
 
+> ## ✅ COMPLETED 2026-05-18 — shipped as v0.5.0-beta through v0.5.4-beta on `origin/main`
+>
+> All 26 tasks across 4 slices landed. Plus follow-up patches: 5 statusline bugs (v0.5.1), 5h/7d subscriber usage (v0.5.2), ANSI-colored bars (v0.5.3), subagent counter + MCP live activity + chunked transcript drain (v0.5.4), plus assorted polish (line layout swap, cost removal from statusline, semantic tooltip on 5h/7d).
+>
+> Final regression: **209 / 209 tests pass · typecheck clean across 4 workspaces · v0.5.4-beta tag on `d81236d`+follow-ups**.
+>
+> Original plan body preserved below for traceability.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 把 cockpit 从 v0.1 alpha（只读 Overview）升级到 v0.5（4 条告警规则 + 系统通知 + 5 个控制动作 + 单 session 详情页），按 4 个垂直切片交付。
