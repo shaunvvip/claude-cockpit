@@ -1,15 +1,25 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
 import { loadStoredTheme, storeTheme, getEffectiveTheme, applyTheme, type Theme } from '../lib/theme.js'
+import { setLang, i18n } from '../i18n/index.js'
 
 export function Sidebar() {
+  const { t } = useTranslation()
   const [theme, setTheme] = useState<Theme>(loadStoredTheme())
+  const [lang, setLangState] = useState(i18n.language)
 
   function cycleTheme() {
     const next: Theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto'
     setTheme(next)
     storeTheme(next)
     applyTheme(getEffectiveTheme(next))
+  }
+
+  async function toggleLang() {
+    const next = lang === 'en' ? 'zh-CN' : 'en'
+    await setLang(next)
+    setLangState(next)
   }
 
   return (
@@ -20,13 +30,13 @@ export function Sidebar() {
         className="block px-2 py-1 mb-1 rounded text-cockpit-muted hover:text-cockpit-text [&.active]:bg-cockpit-panel [&.active]:border-l-2 [&.active]:border-cockpit-info [&.active]:text-cockpit-text"
         activeOptions={{ exact: true }}
       >
-        ⊞ Overview
+        ⊞ {t('nav.overview')}
       </Link>
       <Link
         to="/history"
         className="block px-2 py-1 mb-1 rounded text-cockpit-muted hover:text-cockpit-text [&.active]:bg-cockpit-panel [&.active]:border-l-2 [&.active]:border-cockpit-info [&.active]:text-cockpit-text"
       >
-        ⊿ History
+        ⊿ {t('nav.history')}
       </Link>
 
       <div className="flex-1" />
@@ -39,6 +49,16 @@ export function Sidebar() {
         className="text-xs text-cockpit-muted px-2 py-1 hover:text-cockpit-text"
       >
         {theme === 'auto' ? '◐' : theme === 'light' ? '☀' : '🌙'}
+      </button>
+
+      <button
+        type="button"
+        onClick={toggleLang}
+        aria-label="Toggle language"
+        title="Toggle language"
+        className="text-xs text-cockpit-muted px-2 py-1 hover:text-cockpit-text"
+      >
+        {lang === 'en' ? '中' : 'EN'}
       </button>
     </aside>
   )

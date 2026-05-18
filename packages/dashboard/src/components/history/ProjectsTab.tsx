@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProjects } from '../../hooks/useHistory.js'
 import { apiUrl } from '../../lib/api.js'
 
@@ -13,6 +14,7 @@ function ago(ts: number, now: number = Date.now()): string {
 }
 
 export function ProjectsTab() {
+  const { t } = useTranslation()
   const projects = useProjects(30)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [clearing, setClearing] = useState(false)
@@ -37,13 +39,13 @@ export function ProjectsTab() {
           onClick={() => setConfirmOpen(true)}
           className="text-[10px] text-cockpit-muted hover:text-cockpit-crit border border-cockpit-line rounded px-2 py-1"
         >
-          Clear all history…
+          {t('history.projects.clear')}
         </button>
       </div>
 
-      {projects.loading && <p className="text-cockpit-muted text-xs">Loading…</p>}
+      {projects.loading && <p className="text-cockpit-muted text-xs">{t('history.loading')}</p>}
       {projects.error && <p className="text-cockpit-crit text-xs">Error: {projects.error}</p>}
-      {projects.data && projects.data.projects.length === 0 && <p className="text-cockpit-muted text-xs">No projects in this window.</p>}
+      {projects.data && projects.data.projects.length === 0 && <p className="text-cockpit-muted text-xs">{t('history.noProjects')}</p>}
       {projects.data?.projects.map(p => (
         <div key={p.key} className="bg-cockpit-panel border border-cockpit-line rounded p-3">
           <div className="text-cockpit-text font-semibold">{p.label}</div>
@@ -57,15 +59,15 @@ export function ProjectsTab() {
       {confirmOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-cockpit-bg border border-cockpit-line rounded p-4 max-w-sm">
-            <div className="text-cockpit-text mb-3">Permanently delete all history?</div>
+            <div className="text-cockpit-text mb-3">{t('history.projects.confirm.title')}</div>
             <div className="text-cockpit-muted text-xs mb-4">
-              This empties all 4 tables (sessions / tool_calls / events / usage_snapshots). Cannot be undone.
+              {t('history.projects.confirm.body')}
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setConfirmOpen(false)} className="px-3 py-1 border border-cockpit-line rounded text-xs">Cancel</button>
+              <button onClick={() => setConfirmOpen(false)} className="px-3 py-1 border border-cockpit-line rounded text-xs">{t('history.projects.confirm.cancel')}</button>
               <button onClick={onClear} disabled={clearing}
                 className="px-3 py-1 bg-cockpit-crit text-cockpit-bg rounded text-xs">
-                {clearing ? 'Clearing…' : 'Clear'}
+                {clearing ? t('history.projects.confirm.clearing') : t('history.projects.confirm.ok')}
               </button>
             </div>
           </div>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useTop } from '../../hooks/useHistory.js'
 import { palette } from '../../lib/colors.js'
 
@@ -18,6 +19,7 @@ function metricLabel(metric: Metric, v: number): string {
 }
 
 export function TopTab() {
+  const { t } = useTranslation()
   const [metric, setMetric] = useState<Metric>('cost')
   const [dimension, setDimension] = useState<Dimension>('project')
   const top = useTop(metric, dimension, 30, 10)
@@ -35,7 +37,7 @@ export function TopTab() {
             </button>
           ))}
         </div>
-        <span className="text-cockpit-muted self-center">by</span>
+        <span className="text-cockpit-muted self-center">{t('history.top.by')}</span>
         <div className="flex gap-1">
           {(['project', 'tool', 'session'] as Dimension[]).map(d => (
             <button key={d} onClick={() => setDimension(d)}
@@ -47,9 +49,9 @@ export function TopTab() {
       </div>
 
       <div className="bg-cockpit-panel border border-cockpit-line rounded p-3">
-        {top.loading && <p className="text-cockpit-muted text-xs">Loading…</p>}
+        {top.loading && <p className="text-cockpit-muted text-xs">{t('history.loading')}</p>}
         {top.error && <p className="text-cockpit-crit text-xs">Error: {top.error}</p>}
-        {top.data && top.data.items.length === 0 && <p className="text-cockpit-muted text-xs">No data in this window.</p>}
+        {top.data && top.data.items.length === 0 && <p className="text-cockpit-muted text-xs">{t('history.noData')}</p>}
         {top.data && top.data.items.map(item => {
           const v = metricValue(item, metric)
           const w = max > 0 ? (v / max) * 100 : 0

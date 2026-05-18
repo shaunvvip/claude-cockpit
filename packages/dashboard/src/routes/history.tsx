@@ -1,5 +1,6 @@
 import { createRoute, useSearch, useNavigate } from '@tanstack/react-router'
 import { Route as Root } from './__root.js'
+import { useTranslation } from 'react-i18next'
 import { HistoryTabs } from '../components/HistoryTabs.js'
 import { TrendsTab } from '../components/history/TrendsTab.js'
 import { TopTab } from '../components/history/TopTab.js'
@@ -19,6 +20,7 @@ export const Route = createRoute({
 })
 
 function HistoryPage() {
+  const { t } = useTranslation()
   const { tab } = useSearch({ from: Route.id })
   const navigate = useNavigate({ from: Route.id })
   const activeTab = tab ?? 'trends'
@@ -26,10 +28,10 @@ function HistoryPage() {
   return (
     <div>
       <div className="text-cockpit-muted text-[10px] mb-1">HISTORY</div>
-      <h1 className="text-cockpit-text font-semibold mb-3">Past 30 days</h1>
+      <h1 className="text-cockpit-text font-semibold mb-3">{t('history.title')}</h1>
       <HistoryTabs
         active={activeTab}
-        onChange={(t) => navigate({ search: { tab: t } as any })}
+        onChange={(tab) => navigate({ search: { tab } as any })}
       />
       {activeTab === 'trends'   && <TrendsTab />}
       {activeTab === 'top'      && <TopTab />}
