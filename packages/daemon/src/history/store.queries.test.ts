@@ -67,3 +67,76 @@ describe('HistoryStore.queryProjects', () => {
     expect(r.projects[0]!.key).toBe('/fallback/here')
   })
 })
+
+describe('HistoryStore.queryTop', () => {
+  let store: HistoryStore
+  beforeEach(() => { store = new HistoryStore(':memory:') })
+
+  it('top projects by cost', () => {
+    store.recordSession(s({ sessionId: 'a', projectDir: '/x', cost: 1.0, startedAt: Date.now() - 1000 }))
+    store.recordSession(s({ sessionId: 'b', projectDir: '/y', cost: 5.0, startedAt: Date.now() - 2000 }))
+    store.flush()
+    const r = store.queryTop({ metric: 'cost', dimension: 'project', days: 30, limit: 5 })
+    expect(r.items[0]!.key).toBe('/y')
+    expect(r.items[0]!.cost).toBe(5.0)
+  })
+
+  it('top tools by call count', () => {
+    const now = Date.now()
+    store.recordToolCall('s1', now - 3000, 'Read')
+    store.recordToolCall('s1', now - 2000, 'Read')
+    store.recordToolCall('s1', now - 1000, 'Edit')
+    store.flush()
+    const r = store.queryTop({ metric: 'tools', dimension: 'tool', days: 30, limit: 5 })
+    expect(r.items[0]!.key).toBe('Read')
+    expect(r.items[0]!.toolCalls).toBe(2)
+  })
+})
+
+describe('HistoryStore.querySparkline', () => {
+  let store: HistoryStore
+  beforeEach(() => { store = new HistoryStore(':memory:') })
+
+  it('returns hourly cost buckets', () => {
+    const now = Date.now()
+    store.recordSession(s({ sessionId: 'a', cost: 1.0, startedAt: now - 30 * 60_000 }))   // 30min ago
+    store.recordSession(s({ sessionId: 'b', cost: 2.0, startedAt: now - 90 * 60_000 }))   // 90min ago
+    store.flush()
+    const r = store.querySparkline({ metric: 'cost', days: 1, bucket: 'hour' })
+    expect(r.buckets.length).toBeGreaterThanOrEqual(1)
+    expect(r.buckets.reduce((acc, b) => acc + b.v, 0)).toBeCloseTo(3.0, 2)
+  })
+})
+
+describe('HistoryStore.queryUsageSnapshots', () => {
+  let store: HistoryStore
+  beforeEach(() => { store = new HistoryStore(':memory:') })
+
+  it('returns snapshots within window', () => {
+    store.recordUsage(s({ usage5hPct: 25, usage7dPct: 10 }), Date.now() - 1000)
+    store.recordUsage(s({ usage5hPct: 30, usage7dPct: 10 }), Date.now() - 500)
+    store.flush()
+    const r = store.queryUsageSnapshots({ days: 1 })
+    expect(r.snapshots).toHaveLength(2)
+    expect(r.snapshots[0]!.fiveHourPct).toBe(25)
+  })
+})
+
+describe('HistoryStore.computeBaselinePerSecond', () => {
+  let store: HistoryStore
+  beforeEach(() => { store = new HistoryStore(':memory:') })
+
+  it('returns 0 on empty db', () => {
+    expect(store.computeBaselinePerSecond({ now: Date.now(), windowDays: 7 })).toBe(0)
+  })
+
+  it('computes total cost / total active seconds', () => {
+    const now = Date.now()
+    // Session a: cost 10.0, ran 100 seconds, closed → ended_at set in recordSession
+    store.recordSession(s({ sessionId: 'a', cost: 10.0, startedAt: now - 100_000, lastUpdate: now, status: 'closed' }))
+    store.flush()
+    const baseline = store.computeBaselinePerSecond({ now, windowDays: 7 })
+    expect(baseline).toBeGreaterThan(0)
+    expect(baseline).toBeCloseTo(0.1, 1)   // 10 / 100 = 0.1
+  })
+})

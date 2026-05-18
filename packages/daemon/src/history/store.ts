@@ -189,6 +189,117 @@ export class HistoryStore {
     }
   }
 
+  queryTop(opts: { metric: import('./types.js').TopMetric; dimension: import('./types.js').TopDimension; days: number; limit: number }): import('./types.js').TopResult {
+    const from = Date.now() - opts.days * 86400_000
+    let sql: string
+    switch (opts.dimension) {
+      case 'project':
+        sql = `SELECT COALESCE(project_dir, cwd) as key, ${this.metricSelect(opts.metric)} as metric, COUNT(*) as sessions
+               FROM sessions WHERE started_at >= ? GROUP BY 1 ORDER BY metric DESC LIMIT ?`
+        break
+      case 'session':
+        sql = `SELECT id as key, ${this.metricSelect(opts.metric)} as metric, 1 as sessions
+               FROM sessions WHERE started_at >= ? ORDER BY metric DESC LIMIT ?`
+        break
+      case 'tool':
+        if (opts.metric === 'tools') {
+          sql = `SELECT tool_name as key, COUNT(*) as metric
+                 FROM tool_calls WHERE ts >= ? GROUP BY 1 ORDER BY metric DESC LIMIT ?`
+        } else {
+          // cost/tokens × tool — join sessions
+          const m = this.metricSelect(opts.metric)
+          sql = `SELECT tool_calls.tool_name as key, SUM(${m}) as metric
+                 FROM tool_calls JOIN sessions ON tool_calls.session_id = sessions.id
+                 WHERE tool_calls.ts >= ? GROUP BY 1 ORDER BY metric DESC LIMIT ?`
+        }
+        break
+    }
+    const rows = this.db.prepare(sql).all(from, opts.limit) as any[]
+    return {
+      items: rows.map(r => {
+        const item: any = { key: r.key }
+        if (opts.metric === 'cost') item.cost = r.metric
+        if (opts.metric === 'tokens') item.tokens = r.metric
+        if (opts.metric === 'tools') item.toolCalls = r.metric
+        if (r.sessions !== undefined) item.sessions = r.sessions
+        return item
+      }),
+    }
+  }
+
+  private metricSelect(m: import('./types.js').TopMetric): string {
+    switch (m) {
+      case 'cost': return 'total_cost'
+      case 'tokens': return '(input_tokens + output_tokens + cache_read_tokens + cache_creation_tokens)'
+      case 'tools': return '(SELECT COUNT(*) FROM tool_calls WHERE session_id = sessions.id)'
+    }
+  }
+
+  querySparkline(opts: { metric: 'cost' | 'ctx'; days: number; bucket: 'hour' | 'minute' }): import('./types.js').SparklineResult {
+    const from = Date.now() - opts.days * 86400_000
+    const fmt = opts.bucket === 'hour' ? '%Y-%m-%d %H:00' : '%Y-%m-%d %H:%M'
+    let valueExpr: string
+    if (opts.metric === 'cost') {
+      valueExpr = 'SUM(total_cost)'
+    } else {
+      // ctx — approximate as AVG (input + cache_read + cache_creation) / 1M * 100
+      // (we don't store per-event ctxPct, this is a conservative proxy)
+      valueExpr = 'AVG((input_tokens + cache_read_tokens + cache_creation_tokens) * 100.0 / 1000000.0)'
+    }
+    const rows = this.db.prepare(`
+      SELECT strftime('${fmt}', started_at/1000, 'unixepoch', 'localtime') as bucket,
+             ${valueExpr} as value,
+             MIN(started_at) as t
+      FROM sessions
+      WHERE started_at >= ?
+      GROUP BY 1
+      ORDER BY t ASC
+    `).all(from) as any[]
+    return { buckets: rows.map(r => ({ t: r.t, v: r.value || 0 })) }
+  }
+
+  queryUsageSnapshots(opts: { days: number }): import('./types.js').UsageSnapshotsResult {
+    const from = Date.now() - opts.days * 86400_000
+    const rows = this.db.prepare(`
+      SELECT ts, five_hour_pct, seven_day_pct
+      FROM usage_snapshots
+      WHERE ts >= ?
+      ORDER BY ts ASC
+    `).all(from) as any[]
+    return {
+      snapshots: rows.map(r => ({
+        ts: r.ts,
+        fiveHourPct: r.five_hour_pct,
+        sevenDayPct: r.seven_day_pct,
+      })),
+    }
+  }
+
+  querySessions(opts: { from: number; to: number; limit: number }): import('./types.js').SessionRow[] {
+    return this.db.prepare(`
+      SELECT * FROM sessions
+      WHERE started_at >= ? AND started_at < ?
+      ORDER BY started_at DESC
+      LIMIT ?
+    `).all(opts.from, opts.to, opts.limit) as import('./types.js').SessionRow[]
+  }
+
+  computeBaselinePerSecond(opts: { now: number; windowDays: number }): number {
+    const from = opts.now - opts.windowDays * 86400_000
+    const row = this.db.prepare(`
+      SELECT
+        SUM(total_cost) as total,
+        SUM(CASE
+              WHEN ended_at IS NOT NULL THEN (ended_at - started_at) / 1000.0
+              ELSE (last_update - started_at) / 1000.0
+            END) as activeSec
+      FROM sessions
+      WHERE started_at >= ? AND total_cost > 0
+    `).get(from) as any
+    if (!row || !row.activeSec || row.activeSec <= 0) return 0
+    return (row.total || 0) / row.activeSec
+  }
+
   clearAll(): void {
     this.db.transaction(() => {
       this.db.prepare('DELETE FROM sessions').run()
