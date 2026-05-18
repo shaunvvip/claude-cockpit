@@ -4,6 +4,16 @@
 
 ![overview screenshot](docs/screenshots/overview.png)
 
+## Quickstart
+
+~~~bash
+npm install -g claude-cockpit
+claude-cockpit configure          # 8-step interactive wizard
+# Restart Claude Code; statusline + dashboard auto-wire
+~~~
+
+That's it. The wizard sets up your `~/.claude-cockpit/config.json`, optionally patches `~/.claude/settings.json` to point at this install, and (on macOS) sends a test notification to verify permission.
+
 ## Why
 
 `claude-hud` shows you ONE Claude Code session in your statusline. Cool, but —
@@ -14,6 +24,27 @@
 - I want trends over time.
 
 `claude-cockpit` is that.
+
+## What you get (v1.0 beta)
+
+Everything in v0.9 beta **plus**:
+
+- **`npm install -g claude-cockpit`** — published on npm; no more git clone.
+- **`claude-cockpit configure`** — 8-step interactive wizard (preset / theme / language / alert rules / thresholds / retention / notification test / settings patch).
+- **`claude-cockpit status`** — daemon liveness + DB size + statusline wiring check, all in one command.
+- **Three statusline presets** — Minimal (1 line) / Essential (default) / Full (2 lines + cache + tool names + other-session count). Pick in the wizard or in `config.json.statuslinePreset`.
+- **Light / Dark / Auto theme** — dashboard toggle in sidebar; respects `prefers-color-scheme` when Auto.
+- **EN / 中 i18n** — full dashboard UI in English or 简体中文; toggle in sidebar.
+
+### Statusline preset comparison
+
+| Preset    | Lines | Includes                                                                          |
+|-----------|-------|-----------------------------------------------------------------------------------|
+| Minimal   | 1     | model · cwd · branch · ctx% · [cockpit]                                           |
+| Essential | 2     | + tools · subagents · todos · [dash] [stop] [file] · gauges                       |
+| Full      | 2     | + cache token count · top-3 tool names · "others ×N" siblings on line 2          |
+
+---
 
 ## What you get (v0.9 beta)
 
@@ -217,11 +248,14 @@ claude-cockpit/
 
 ## Roadmap
 
-- ✅ **v0.5** (shipped) — Smart alerts (ctx-high / cost-spike / loop-detect / subagent-stuck) + system notifications + working `[stop]` / `[file]` actions + session detail page + 5h/7d subscriber usage bars + ANSI-colored statusline.
-- ✅ **v0.9** (shipped — current) — SQLite history: 30-day trends, top sessions by cost / tokens, project cost ranking, real (non-mock) Sparklines, `/history` page with three tabs, cost-spike baseline graduated to 7d SQLite window.
-- **v1.0** (next) — Minimal / Full presets, configure wizard, light theme, EN/CN i18n, single-binary npm publish.
+- ✅ **v0.5** (shipped) — Smart alerts + system notifications + working `[stop]` / `[file]` actions + session detail page + 5h/7d subscriber usage bars + ANSI-colored statusline.
+- ✅ **v0.9** (shipped) — SQLite history layer + `/history` page (Trends / Top / Projects tabs) + Sparkline real data + cost-spike baseline migrated to 7d window.
+- ✅ **v1.0** (shipped — current) — `npm install -g`, configure wizard, statusline presets, light theme, EN/CN i18n.
+- **Future** — `/alerts` feed page, Linux notify-send action callbacks, Windows support.
 
-## Install (beta — v0.5.x)
+## Develop
+
+If you want to hack on cockpit itself, work from source:
 
 ```bash
 git clone https://github.com/shaunvvip/claude-cockpit
