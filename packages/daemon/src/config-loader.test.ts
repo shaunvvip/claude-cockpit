@@ -45,4 +45,34 @@ describe('loadConfig', () => {
     const c = loadConfig(tmpFile)
     expect(c.ruleConfig.loopDetectThreshold).toBe(8)
   })
+
+  it('parses statuslinePreset / dashboardTheme / dashboardLang', () => {
+    writeFileSync(tmpFile, JSON.stringify({
+      statuslinePreset: 'full',
+      dashboardTheme: 'light',
+      dashboardLang: 'zh-CN',
+    }))
+    const c = loadConfig(tmpFile)
+    expect(c.statuslinePreset).toBe('full')
+    expect(c.dashboardTheme).toBe('light')
+    expect(c.dashboardLang).toBe('zh-CN')
+  })
+
+  it('ignores invalid preset / theme / lang values', () => {
+    writeFileSync(tmpFile, JSON.stringify({
+      statuslinePreset: 'XXX',
+      dashboardTheme: 'rainbow',
+      dashboardLang: 'klingon',
+    }))
+    const c = loadConfig(tmpFile)
+    expect(c.statuslinePreset).toBeUndefined()
+    expect(c.dashboardTheme).toBeUndefined()
+    expect(c.dashboardLang).toBeUndefined()
+  })
+
+  it('parses historyFlushMs when positive number', () => {
+    writeFileSync(tmpFile, JSON.stringify({ historyFlushMs: 2000 }))
+    const c = loadConfig(tmpFile)
+    expect(c.historyFlushMs).toBe(2000)
+  })
 })
