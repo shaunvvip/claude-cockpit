@@ -20,6 +20,7 @@ import { EventBuffer } from './event-buffer.js'
 import { AlertStore } from './alert-store.js'
 import { loadConfig } from './config-loader.js'
 import { runCleanup, scheduleDailyCleanup } from './history/cleanup.js'
+import { scheduleSizeMonitor } from './history/size-monitor.js'
 import { mkdirSync, existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
@@ -183,6 +184,8 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     ? scheduleDailyCleanup(historyStore, cockpitCfg.retentionDays ?? 90)
     : undefined
 
+  const sizeMonitorTimer = historyStore ? scheduleSizeMonitor(historyStore) : undefined
+
   const ruleEngine = new RuleEngine({
     rules: [ctxHighRule, costSpikeRule, loopDetectRule, subagentStuckRule],
     config: cockpitCfg.ruleConfig,
@@ -225,6 +228,7 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     clearInterval(ruleTick)
     if (flushTimer) clearInterval(flushTimer)
     cleanupTimer?.cancel()
+    sizeMonitorTimer?.cancel()
     historyStore?.close()
     for (const w of watchers.values()) {
       try { await w.stop() } catch { /* */ }
