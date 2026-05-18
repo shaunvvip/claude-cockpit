@@ -4,6 +4,7 @@ export interface StatuslineInput {
   model: string
   transcriptPath: string
   branch?: string
+  projectDir?: string         // ← NEW (workspace.project_dir)
   cost?: number
   usage5hPct?: number
   usage5hResetAt?: number   // ms epoch
@@ -53,6 +54,12 @@ export function parseStatuslineInput(raw: string): StatuslineInput | null {
     if (typeof b === 'string') branch = b
   }
 
+  let projectDir: string | undefined
+  if (v.workspace && typeof v.workspace === 'object') {
+    const pd = (v.workspace as Record<string, unknown>).project_dir
+    if (typeof pd === 'string') projectDir = pd
+  }
+
   // Claude Code stdin includes cost.total_cost_usd (Bug C: previously ignored)
   let cost: number | undefined
   if (v.cost && typeof v.cost === 'object') {
@@ -82,6 +89,7 @@ export function parseStatuslineInput(raw: string): StatuslineInput | null {
   return {
     sessionId, cwd, model, transcriptPath,
     ...(branch !== undefined && { branch }),
+    ...(projectDir !== undefined && { projectDir }),
     ...(cost !== undefined && { cost }),
     ...(usage5hPct !== undefined && { usage5hPct }),
     ...(usage5hResetAt !== undefined && { usage5hResetAt }),

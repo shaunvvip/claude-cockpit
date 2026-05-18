@@ -45,6 +45,7 @@ export interface SessionState {
   lastUpdate: number       // ms epoch
   startedAt: number
   branch?: string
+  projectDir?: string             // workspace.project_dir from CC stdin
   lastEditPath?: string
   lastEditTs?: number
   // Claude Code subscriber usage windows (from stdin rate_limits)

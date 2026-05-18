@@ -26,7 +26,7 @@ export class HistoryStore {
     const row: SessionRow = {
       id: s.sessionId,
       cwd: s.cwd,
-      project_dir: null,   // wire-up in Task 6 (statusline payload extension)
+      project_dir: s.projectDir ?? null,
       model: s.model,
       branch: s.branch ?? null,
       started_at: s.startedAt,

@@ -98,4 +98,22 @@ describe('parseStatuslineInput', () => {
     expect(parsed?.usage5hPct).toBeUndefined()
     expect(parsed?.usage7dPct).toBeUndefined()
   })
+
+  it('extracts workspace.project_dir when present', () => {
+    const raw = JSON.stringify({
+      session_id: 'sid', cwd: '/x', model: { id: 'm' }, transcript_path: '/t',
+      workspace: { current_branch: 'main', project_dir: '/Users/me/proj' },
+    })
+    const parsed = parseStatuslineInput(raw)
+    expect(parsed?.projectDir).toBe('/Users/me/proj')
+  })
+
+  it('omits projectDir when workspace lacks it', () => {
+    const raw = JSON.stringify({
+      session_id: 'sid', cwd: '/x', model: { id: 'm' }, transcript_path: '/t',
+      workspace: { current_branch: 'main' },
+    })
+    const parsed = parseStatuslineInput(raw)
+    expect(parsed?.projectDir).toBeUndefined()
+  })
 })
