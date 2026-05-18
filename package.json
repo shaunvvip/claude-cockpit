@@ -5,7 +5,12 @@
   "bin": {
     "claude-cockpit": "./bin/claude-cockpit.js"
   },
-  "files": ["dist", "bin", "README.md", "LICENSE"],
+  "files": [
+    "dist",
+    "bin",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=20"
   },
@@ -22,12 +27,13 @@
     "prepack": "npm run build:bundle"
   },
   "dependencies": {
+    "@clack/prompts": "^0.7.0",
     "better-sqlite3": "^12.10.0",
-    "ws": "^8.18.0",
-    "@clack/prompts": "^0.7.0"
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "@types/node": "^20.12.0",
+    "@vitest/coverage-v8": "^1.6.1",
     "esbuild": "^0.21.5",
     "tsx": "^4.22.0",
     "typescript": "^5.4.0",
