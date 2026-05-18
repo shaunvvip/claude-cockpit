@@ -64,6 +64,11 @@ export async function handleApiRequest(
 ): Promise<ApiResponse | null> {
   if (!url.startsWith('/api/')) return null
 
+  if (url.startsWith('/api/history/')) {
+    const { handleHistoryRequest } = await import('./history-routes.js')
+    return handleHistoryRequest(method, url, ctx)
+  }
+
   if (method === 'GET' && url === '/api/sessions') {
     return json(200, { sessions: ctx.registry.list() })
   }
