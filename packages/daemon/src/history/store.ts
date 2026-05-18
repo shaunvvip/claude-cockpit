@@ -120,6 +120,75 @@ export class HistoryStore {
     })()
   }
 
+  queryTrends(opts: { from: number; to: number }): import('./types.js').TrendsResult {
+    const rows = this.db.prepare(`
+      SELECT
+        date(started_at/1000, 'unixepoch', 'localtime') as date,
+        SUM(total_cost)            as cost,
+        SUM(input_tokens)          as inputTokens,
+        SUM(output_tokens)         as outputTokens,
+        SUM(cache_read_tokens)     as cacheReadTokens,
+        SUM(cache_creation_tokens) as cacheCreationTokens,
+        COUNT(*)                   as sessions
+      FROM sessions
+      WHERE started_at >= ? AND started_at < ?
+      GROUP BY 1
+      ORDER BY 1 ASC
+    `).all(opts.from, opts.to) as any[]
+
+    const totals = this.db.prepare(`
+      SELECT
+        SUM(total_cost)             as cost,
+        COUNT(*)                    as sessions,
+        SUM(cache_read_tokens)      as cacheReads,
+        SUM(input_tokens + cache_read_tokens + cache_creation_tokens) as totalIn
+      FROM sessions
+      WHERE started_at >= ? AND started_at < ?
+    `).get(opts.from, opts.to) as any
+
+    const hitRate = totals.totalIn > 0 ? totals.cacheReads / totals.totalIn : 0
+    return {
+      from: opts.from,
+      to: opts.to,
+      buckets: rows.map(r => ({
+        date: r.date,
+        cost: r.cost || 0,
+        inputTokens: r.inputTokens || 0,
+        outputTokens: r.outputTokens || 0,
+        cacheReadTokens: r.cacheReadTokens || 0,
+        cacheCreationTokens: r.cacheCreationTokens || 0,
+        sessions: r.sessions || 0,
+      })),
+      totals: { cost: totals.cost || 0, sessions: totals.sessions || 0, cacheHitRate: hitRate },
+    }
+  }
+
+  queryProjects(opts: { days: number }): import('./types.js').ProjectsResult {
+    const from = Date.now() - opts.days * 86400_000
+    const rows = this.db.prepare(`
+      SELECT
+        COALESCE(project_dir, cwd) as key,
+        SUM(total_cost)            as cost,
+        COUNT(*)                   as sessions,
+        SUM(input_tokens + output_tokens + cache_read_tokens + cache_creation_tokens) as totalTokens,
+        MAX(last_update)           as lastUpdate
+      FROM sessions
+      WHERE started_at >= ?
+      GROUP BY 1
+      ORDER BY cost DESC
+    `).all(from) as any[]
+    return {
+      projects: rows.map(r => ({
+        key: r.key,
+        label: String(r.key).split('/').filter(Boolean).slice(-1)[0] ?? r.key,
+        cost: r.cost || 0,
+        sessions: r.sessions || 0,
+        totalTokens: r.totalTokens || 0,
+        lastUpdate: r.lastUpdate || 0,
+      })),
+    }
+  }
+
   clearAll(): void {
     this.db.transaction(() => {
       this.db.prepare('DELETE FROM sessions').run()
