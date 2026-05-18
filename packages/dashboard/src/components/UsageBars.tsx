@@ -24,11 +24,22 @@ function barColor(pct: number): string {
   return palette.info
 }
 
+// Semantic clarification for tooltips. Anthropic's two windows behave differently:
+// - 5h: rolling window that starts on first use after the prior reset
+// - 7d: weekly calendar quota — aligned to your account's billing week, NOT a
+//   rolling-past-7-days count. After the weekly boundary the counter goes to 0
+//   and starts accumulating fresh.
+const WINDOW_DESCRIPTION: Record<string, string> = {
+  '5h': '5-hour rolling window (from first use after last reset)',
+  '7d': 'Weekly quota — resets on your account billing-week boundary, not a rolling-7-days count',
+}
+
 function Bar({ label, pct, resetAt }: { label: string; pct: number; resetAt: number | undefined }) {
   const cd = formatCountdown(resetAt)
+  const tooltip = `${WINDOW_DESCRIPTION[label] ?? label}${cd ? ` · resets in ${cd}` : ''}`
   return (
-    <div className="flex items-center gap-2 text-[10px]">
-      <div className="w-6 text-cockpit-muted">{label}</div>
+    <div className="flex items-center gap-2 text-[10px]" title={tooltip}>
+      <div className="w-6 text-cockpit-muted cursor-help underline decoration-dotted decoration-cockpit-muted/40">{label}</div>
       <div className="flex-1 h-1.5 bg-cockpit-line rounded">
         <div className="h-1.5 rounded" style={{ width: `${Math.max(0, Math.min(100, pct))}%`, background: barColor(pct) }} />
       </div>

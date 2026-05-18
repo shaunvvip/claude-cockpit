@@ -22,6 +22,24 @@ Everything in v0.1 alpha **plus**:
 - **Smart alerts**: 4 built-in rules (ctx-high / cost-spike / loop-detect / subagent-stuck) fire native macOS / Linux system notifications; configurable / toggle-able via `~/.claude-cockpit/config.json`.
 - **Working control actions**: `[stop]` / `[file]` OSC 8 statusline links actually work. Dashboard Stop / Open file / Copy id / Focus terminal buttons too.
 - **Session detail page** `/sessions/:id` with live CTX chart, 5-min tool bar chart, todos, and event timeline.
+- **Subscriber usage bars (5h + 7d)** in both statusline and dashboard, read live from Claude Code's `rate_limits` field.
+
+### About the 5h / 7d windows
+
+These two values come straight from Claude Code's stdin and reflect Anthropic's
+own internal rate-limit counters — cockpit displays them faithfully, it doesn't
+recompute them. Their semantics are **not the same**:
+
+- **`5h`** — a rolling 5-hour window. The clock starts on your first request
+  after the prior reset. Reset time shifts forward as you keep using it.
+- **`7d`** — a **weekly** quota aligned to your account's billing-week
+  boundary. **Not** a rolling-past-7-days count. After the weekly boundary
+  the counter goes to 0 and starts accumulating fresh — so a 70% reading on
+  one Friday and a 1% reading on the next Friday is normal: a reset happened
+  in between.
+
+If the numbers look surprisingly low after a reset boundary, that's the
+expected behavior, not a cockpit bug.
 
 ### System dependencies
 
