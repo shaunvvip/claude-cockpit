@@ -16,3 +16,7 @@ export function getRuntimeInfoPath(): string {
 export function getCrashLogPath(): string {
   return join(getCockpitDir(), 'crash.log')
 }
+
+export function getDbPath(): string {
+  return join(getCockpitDir(), 'cockpit.db')
+}
