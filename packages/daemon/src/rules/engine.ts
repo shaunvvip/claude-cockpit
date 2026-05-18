@@ -1,29 +1,27 @@
 import type { AlertEvent, SessionState } from '@claude-cockpit/shared'
 import type { Rule, RuleConfig, RuleContext } from './types.js'
+import type { TranscriptEvent } from '../transcript-watcher.js'
 import { DEFAULT_RULE_CONFIG } from './types.js'
 
-const DEDUP_WINDOW_MS = 10 * 60 * 1000  // 同 session + 同规则 10min 内只发一次
+const DEDUP_WINDOW_MS = 10 * 60 * 1000
 
 export interface EngineOptions {
   rules: Rule[]
   config?: RuleConfig
   disabledRuleIds?: Set<string>
   now?: () => number
-  getRecentEvents?: (sessionId: string) => readonly RuleContext['recentEvents'][number][]
+  getRecentEvents?: (sessionId: string) => readonly TranscriptEvent[]
+  getBaseline?: (now: number) => number      // calls historyStore.computeBaselinePerSecond
 }
 
 export class RuleEngine {
-  private readonly dedupTable = new Map<string, number>()  // "${sid}:${rid}" → lastFiredTs
+  private readonly dedupTable = new Map<string, number>()
   private readonly rules: Rule[]
   private readonly config: RuleConfig
   private readonly disabled: Set<string>
   private readonly now: () => number
-  private readonly getRecentEvents: (sessionId: string) => readonly RuleContext['recentEvents'][number][]
-
-  // baseline state for cost-spike
-  private totalCost = 0
-  private totalActiveSec = 0
-  private lastBaselineTickMs: number | undefined
+  private readonly getRecentEvents: (sessionId: string) => readonly TranscriptEvent[]
+  private readonly getBaseline: (now: number) => number
 
   constructor(opts: EngineOptions) {
     this.rules = opts.rules
@@ -31,12 +29,12 @@ export class RuleEngine {
     this.disabled = opts.disabledRuleIds ?? new Set()
     this.now = opts.now ?? Date.now
     this.getRecentEvents = opts.getRecentEvents ?? (() => [])
+    this.getBaseline = opts.getBaseline ?? (() => 0)
   }
 
-  /** 主流程：扫一遍所有 session，命中规则就吐 AlertEvent 数组 */
   tick(sessions: SessionState[]): AlertEvent[] {
     const now = this.now()
-    this.updateBaseline(sessions, now)
+    const baseline = this.getBaseline(now)
 
     const out: AlertEvent[] = []
     for (const session of sessions) {
@@ -44,9 +42,7 @@ export class RuleEngine {
       const ctx: RuleContext = {
         now,
         recentEvents: this.getRecentEvents(session.sessionId),
-        rolling: {
-          perSecondCostAvg: this.totalActiveSec > 0 ? this.totalCost / this.totalActiveSec : 0,
-        },
+        history: { perSecondCostAvg7d: baseline },
         config: this.config,
       }
       for (const rule of this.rules) {
@@ -61,18 +57,5 @@ export class RuleEngine {
       }
     }
     return out
-  }
-
-  private updateBaseline(sessions: SessionState[], now: number): void {
-    if (this.lastBaselineTickMs === undefined) {
-      this.lastBaselineTickMs = now
-      this.totalCost = sessions.reduce((acc, s) => acc + s.cost, 0)
-      return
-    }
-    const dtSec = (now - this.lastBaselineTickMs) / 1000
-    this.lastBaselineTickMs = now
-    const activeCount = sessions.filter((s) => s.status !== 'closed').length
-    this.totalActiveSec += activeCount * dtSec
-    this.totalCost = sessions.reduce((acc, s) => acc + s.cost, 0)
   }
 }

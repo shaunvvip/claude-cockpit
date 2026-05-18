@@ -19,7 +19,7 @@ function fe(path: string, ts: number, tool: 'Edit' | 'Write' | 'Read' = 'Edit'):
 }
 
 function ctxWithEvents(events: TranscriptEvent[]) {
-  return { now: NOW, recentEvents: events, rolling: { perSecondCostAvg: 0 }, config: DEFAULT_RULE_CONFIG }
+  return { now: NOW, recentEvents: events, history: { perSecondCostAvg7d: 0 }, config: DEFAULT_RULE_CONFIG }
 }
 
 describe('loop-detect rule', () => {

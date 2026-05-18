@@ -15,7 +15,7 @@ function makeSession(over: Partial<SessionState> = {}): SessionState {
 const ctx = {
   now: 1000,
   recentEvents: [],
-  rolling: { perSecondCostAvg: 0 },
+  history: { perSecondCostAvg7d: 0 },
   config: DEFAULT_RULE_CONFIG,
 }
 

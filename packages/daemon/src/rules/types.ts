@@ -4,7 +4,7 @@ import type { TranscriptEvent } from '../transcript-watcher.js'
 export interface RuleContext {
   now: number                              // ms epoch
   recentEvents: readonly TranscriptEvent[] // 最近 N 分钟，由 EventBuffer 提供
-  rolling: { perSecondCostAvg: number }    // 全局基线，cost-spike 用
+  history: { perSecondCostAvg7d: number }   // 全局基线，cost-spike 用
   config: RuleConfig
 }
 

@@ -175,6 +175,9 @@ export async function startDaemon(opts: MainOptions = {}): Promise<() => Promise
     config: cockpitCfg.ruleConfig,
     disabledRuleIds: cockpitCfg.disabledRules,
     getRecentEvents: (sid) => eventBuffer.recent(sid, Date.now(), 30 * 60 * 1000),
+    ...(historyStore !== undefined && {
+      getBaseline: (now: number) => historyStore.computeBaselinePerSecond({ now, windowDays: 7 }),
+    }),
   })
 
   // First-run test notification — surfaces macOS notification permission prompt early (R7)

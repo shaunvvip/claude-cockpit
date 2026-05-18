@@ -15,7 +15,7 @@ function makeSession(): SessionState {
 }
 
 function ctxWith(events: TranscriptEvent[]) {
-  return { now: NOW, recentEvents: events, rolling: { perSecondCostAvg: 0 }, config: DEFAULT_RULE_CONFIG }
+  return { now: NOW, recentEvents: events, history: { perSecondCostAvg7d: 0 }, config: DEFAULT_RULE_CONFIG }
 }
 
 describe('subagent-stuck rule', () => {

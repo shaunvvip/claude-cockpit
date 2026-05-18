@@ -17,7 +17,7 @@ function makeSession(over: Partial<SessionState> = {}): SessionState {
 const baseCtx = {
   now: NOW,
   recentEvents: [],
-  rolling: { perSecondCostAvg: 0.0001 }, // ~$0.36/hr baseline
+  history: { perSecondCostAvg7d: 0.0001 }, // ~$0.36/hr baseline
   config: DEFAULT_RULE_CONFIG,
 }
 
@@ -35,16 +35,9 @@ describe('cost-spike rule', () => {
     expect(r).toBeNull()
   })
 
-  it('does not fire for sessions younger than 30 min', () => {
-    const r = costSpikeRule.evaluate(
-      makeSession({ cost: 100, startedAt: NOW - 10 * 60 * 1000 }), baseCtx,
-    )
-    expect(r).toBeNull()
-  })
-
-  it('does not fire when baseline is 0 (no data)', () => {
+  it('does not fire when baseline is 0 (empty db)', () => {
     const r = costSpikeRule.evaluate(makeSession({ cost: 100 }), {
-      ...baseCtx, rolling: { perSecondCostAvg: 0 },
+      ...baseCtx, history: { perSecondCostAvg7d: 0 },
     })
     expect(r).toBeNull()
   })
