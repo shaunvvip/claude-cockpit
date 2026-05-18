@@ -1,6 +1,7 @@
 import { createRoute, useSearch, useNavigate } from '@tanstack/react-router'
 import { Route as Root } from './__root.js'
 import { HistoryTabs } from '../components/HistoryTabs.js'
+import { TrendsTab } from '../components/history/TrendsTab.js'
 
 export interface HistorySearch { tab?: 'trends' | 'top' | 'projects' }
 
@@ -28,9 +29,9 @@ function HistoryPage() {
         active={activeTab}
         onChange={(t) => navigate({ search: { tab: t } as any })}
       />
-      <div className="bg-cockpit-panel border border-cockpit-line rounded p-3 text-cockpit-muted text-xs">
-        Tab content coming in Tasks 16-18: {activeTab}
-      </div>
+      {activeTab === 'trends'   && <TrendsTab />}
+      {activeTab === 'top'      && <div className="text-cockpit-muted text-xs">Top tab — coming in Task 17</div>}
+      {activeTab === 'projects' && <div className="text-cockpit-muted text-xs">Projects tab — coming in Task 18</div>}
     </div>
   )
 }
